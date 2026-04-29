@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../src/IntentRegistry.sol";
+import "../src/AgentRegistry.sol";
 import "../src/DelegationRegistry.sol";
 import "../src/ExecutionGate.sol";
 
@@ -11,6 +12,7 @@ bytes32 constant CURVE       = keccak256(abi.encodePacked("Curve"));
 
 contract ExecutionGateTest is Test {
     IntentRegistry public intentRegistry;
+    AgentRegistry public agentRegistry;
     DelegationRegistry public delegationRegistry;
     ExecutionGate public executionGate;
 
@@ -20,27 +22,33 @@ contract ExecutionGateTest is Test {
 
     address internal constant TOKEN_IN  = address(0x1234);
     address internal constant TOKEN_OUT = address(0x5678);
+    // address(0xC0FFEE) is the authorizedOrchestrator embedded in all intents
+    address internal constant ORCHESTRATOR = address(0xC0FFEE);
 
     bytes32 internal protocol;
     bytes32 internal intentId;
     bytes32 internal delegationId;
 
     function setUp() public {
-        intentRegistry    = new IntentRegistry();
-        delegationRegistry = new DelegationRegistry(address(intentRegistry));
-        executionGate     = new ExecutionGate(address(intentRegistry), address(delegationRegistry));
+        intentRegistry     = new IntentRegistry();
+        agentRegistry      = new AgentRegistry();
+        delegationRegistry = new DelegationRegistry(address(intentRegistry), address(agentRegistry));
+        executionGate      = new ExecutionGate(address(intentRegistry), address(delegationRegistry));
         delegationRegistry.setExecutionGate(address(executionGate));
 
-        owner  = vm.addr(ownerKey);
-        agent  = makeAddr("agent");
+        owner    = vm.addr(ownerKey);
+        agent    = makeAddr("agent");
         protocol = UNISWAP_V3;
+
+        // Register agent so isActiveAgent checks pass
+        agentRegistry.registerAgent(agent, "agent");
 
         bytes32[] memory protocols = new bytes32[](1);
         protocols[0] = protocol;
 
         IntentRegistry.Intent memory intent = IntentRegistry.Intent({
             owner: owner,
-            authorizedOrchestrator: address(0xC0FFEE),
+            authorizedOrchestrator: ORCHESTRATOR,
             tokenIn: TOKEN_IN,
             maxAmountIn: 1 ether,
             minAmountOut: 0.95 ether,
@@ -56,7 +64,7 @@ contract ExecutionGateTest is Test {
             allowedProtocols: protocols,
             deadline: block.timestamp + 30 minutes
         });
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         delegationId = delegationRegistry.delegateFromRoot(intentId, scope, agent);
     }
 
@@ -141,27 +149,36 @@ contract ExecutionGateTest is Test {
     }
 
     function test_VerifyChain_RevertExceedsRootIntent() public {
-        // Delegation allows 0.5 ether but root intent is 1 ether.
-        // We need amountIn > 1 ether to trip the root check (delegation check trips at 0.5).
-        // Use a delegation with a scope equal to the root to expose the root check.
+        // Replay protection prevents delegating from the same intentId twice.
+        // Register a second intent (nonce=1) to get a fresh delegation slot.
         bytes32[] memory protocols = new bytes32[](1);
         protocols[0] = protocol;
 
-        // Create a delegation with maxAmountIn == root's maxAmountIn
+        IntentRegistry.Intent memory intent2 = IntentRegistry.Intent({
+            owner: owner,
+            authorizedOrchestrator: ORCHESTRATOR,
+            tokenIn: TOKEN_IN,
+            maxAmountIn: 1 ether,
+            minAmountOut: 0.95 ether,
+            allowedProtocols: protocols,
+            deadline: block.timestamp + 1 hours,
+            nonce: 1
+        });
+        bytes32 intentId2 = intentRegistry.registerIntent(intent2, _signIntent(intent2));
+
+        // Delegate with scope equal to root (maxAmountIn = 1 ether)
         DelegationRegistry.Scope memory scope = DelegationRegistry.Scope({
-            maxAmountIn: 1 ether,         // same as root
+            maxAmountIn: 1 ether,
             minAmountOut: 0.95 ether,
             allowedProtocols: protocols,
             deadline: block.timestamp + 30 minutes
         });
-        vm.prank(owner);
-        bytes32 wideDelegationId = delegationRegistry.delegateFromRoot(intentId, scope, agent);
+        vm.prank(ORCHESTRATOR);
+        bytes32 wideDelegationId = delegationRegistry.delegateFromRoot(intentId2, scope, agent);
 
+        // amountIn=0.9 passes both wide scope (0.9 <= 1) and root intent (0.9 <= 1)
         ExecutionGate.TxParams memory p = _validParams();
-        p.amountIn = 1.1 ether; // passes scope (1.1 <= 1? no) — use a scope == root to test root check
-        // Actually amountIn must be <= scope, so we can't exceed scope without first exceeding root.
-        // Verify root check fires when scope matches root:
-        p.amountIn = 0.9 ether; // passes wide scope (0.9 <= 1) and root (0.9 <= 1) -> passes
+        p.amountIn = 0.9 ether;
         assertTrue(executionGate.verifyChain(wideDelegationId, p));
     }
 
@@ -178,6 +195,8 @@ contract ExecutionGateTest is Test {
 
     function test_VerifyChain_MultiHop() public {
         address subAgent = makeAddr("subAgent");
+        agentRegistry.registerAgent(subAgent, "subAgent");
+
         bytes32[] memory protocols = new bytes32[](1);
         protocols[0] = protocol;
 
@@ -203,6 +222,8 @@ contract ExecutionGateTest is Test {
 
     function test_VerifyChain_MultiHop_InnerScopeViolationReverts() public {
         address subAgent = makeAddr("subAgent");
+        agentRegistry.registerAgent(subAgent, "subAgent");
+
         bytes32[] memory protocols = new bytes32[](1);
         protocols[0] = protocol;
 
@@ -297,6 +318,8 @@ contract ExecutionGateTest is Test {
 
     function test_ExecuteSwap_MultiHop_Succeeds() public {
         address subAgent = makeAddr("subAgent");
+        agentRegistry.registerAgent(subAgent, "subAgent");
+
         bytes32[] memory protocols = new bytes32[](1);
         protocols[0] = protocol;
 

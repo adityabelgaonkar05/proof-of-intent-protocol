@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./IntentRegistry.sol";
+import "./AgentRegistry.sol";
 
 contract DelegationRegistry {
     struct Scope {
@@ -21,7 +22,9 @@ contract DelegationRegistry {
 
     mapping(bytes32 => Delegation) public delegations;
     mapping(bytes32 => bool) public delegationExists;
+    mapping(bytes32 => bool) public delegationUsed;
     address public intentRegistry;
+    address public agentRegistry;
     address public executionGate;
     address private _owner;
 
@@ -31,8 +34,9 @@ contract DelegationRegistry {
         address indexed delegatedTo
     );
 
-    constructor(address _intentRegistry) {
+    constructor(address _intentRegistry, address _agentRegistry) {
         intentRegistry = _intentRegistry;
+        agentRegistry = _agentRegistry;
         _owner = msg.sender;
     }
 
@@ -48,7 +52,8 @@ contract DelegationRegistry {
         address delegateTo
     ) external returns (bytes32 delegationId) {
         IntentRegistry.Intent memory intent = IntentRegistry(intentRegistry).getIntent(rootIntentId);
-        require(msg.sender == intent.owner, "Not intent owner");
+        require(msg.sender == intent.authorizedOrchestrator, "Not authorized orchestrator");
+        require(AgentRegistry(agentRegistry).isActiveAgent(delegateTo), "Target not registered agent");
         require(childScope.maxAmountIn <= intent.maxAmountIn, "Amount exceeds root");
         require(childScope.minAmountOut >= intent.minAmountOut, "MinOut below root");
         require(childScope.deadline <= intent.deadline, "Deadline exceeds root");
@@ -58,6 +63,9 @@ contract DelegationRegistry {
         );
 
         delegationId = keccak256(abi.encode(rootIntentId, childScope.maxAmountIn, childScope.minAmountOut, childScope.allowedProtocols, childScope.deadline, delegateTo, block.timestamp));
+
+        require(!delegationUsed[rootIntentId], "Root already delegated");
+        delegationUsed[rootIntentId] = true;
 
         delegations[delegationId] = Delegation({
             parentId: rootIntentId,
@@ -79,6 +87,7 @@ contract DelegationRegistry {
         require(delegationExists[parentDelegationId], "Parent not found");
         Delegation storage delegation = delegations[parentDelegationId];
         require(msg.sender == delegation.delegatedTo, "Not delegated agent");
+        require(AgentRegistry(agentRegistry).isActiveAgent(delegateTo), "Target not registered agent");
         require(!delegation.executed, "Already executed");
 
         Scope storage parentScope = delegation.scope;
@@ -91,6 +100,9 @@ contract DelegationRegistry {
         );
 
         delegationId = keccak256(abi.encode(parentDelegationId, childScope.maxAmountIn, childScope.minAmountOut, childScope.allowedProtocols, childScope.deadline, delegateTo, block.timestamp));
+
+        require(!delegationUsed[parentDelegationId], "Already sub-delegated");
+        delegationUsed[parentDelegationId] = true;
 
         delegations[delegationId] = Delegation({
             parentId: parentDelegationId,

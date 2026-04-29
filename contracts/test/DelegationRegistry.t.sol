@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../src/IntentRegistry.sol";
+import "../src/AgentRegistry.sol";
 import "../src/DelegationRegistry.sol";
 import "../src/ExecutionGate.sol";
 
@@ -11,6 +12,7 @@ bytes32 constant CURVE       = keccak256(abi.encodePacked("Curve"));
 
 contract DelegationRegistryTest is Test {
     IntentRegistry public intentRegistry;
+    AgentRegistry public agentRegistry;
     DelegationRegistry public delegationRegistry;
     ExecutionGate public executionGate;
 
@@ -19,18 +21,26 @@ contract DelegationRegistryTest is Test {
     address internal agent;
     address internal subAgent;
 
+    // address(0xC0FFEE) is the authorizedOrchestrator embedded in all intents
+    address internal constant ORCHESTRATOR = address(0xC0FFEE);
+
     bytes32 internal intentId;
     IntentRegistry.Intent internal rootIntent;
 
     function setUp() public {
-        intentRegistry = new IntentRegistry();
-        delegationRegistry = new DelegationRegistry(address(intentRegistry));
-        executionGate = new ExecutionGate(address(intentRegistry), address(delegationRegistry));
+        intentRegistry    = new IntentRegistry();
+        agentRegistry     = new AgentRegistry();
+        delegationRegistry = new DelegationRegistry(address(intentRegistry), address(agentRegistry));
+        executionGate     = new ExecutionGate(address(intentRegistry), address(delegationRegistry));
         delegationRegistry.setExecutionGate(address(executionGate));
 
-        owner = vm.addr(ownerKey);
-        agent = makeAddr("agent");
+        owner    = vm.addr(ownerKey);
+        agent    = makeAddr("agent");
         subAgent = makeAddr("subAgent");
+
+        // Register both agents so isActiveAgent checks pass
+        agentRegistry.registerAgent(agent, "agent");
+        agentRegistry.registerAgent(subAgent, "subAgent");
 
         bytes32[] memory protocols = new bytes32[](2);
         protocols[0] = UNISWAP_V3;
@@ -38,7 +48,7 @@ contract DelegationRegistryTest is Test {
 
         rootIntent = IntentRegistry.Intent({
             owner: owner,
-            authorizedOrchestrator: address(0xC0FFEE),
+            authorizedOrchestrator: ORCHESTRATOR,
             tokenIn: address(0x1234),
             maxAmountIn: 1 ether,
             minAmountOut: 0.95 ether,
@@ -86,7 +96,7 @@ contract DelegationRegistryTest is Test {
     }
 
     function _createRootDelegation() internal returns (bytes32) {
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         return delegationRegistry.delegateFromRoot(intentId, _narrowScope(), agent);
     }
 
@@ -96,7 +106,7 @@ contract DelegationRegistryTest is Test {
 
     function test_DelegateFromRoot_Succeeds() public {
         DelegationRegistry.Scope memory scope = _narrowScope();
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         bytes32 delId = delegationRegistry.delegateFromRoot(intentId, scope, agent);
 
         assertTrue(delegationRegistry.delegationExists(delId));
@@ -110,7 +120,7 @@ contract DelegationRegistryTest is Test {
 
     function test_DelegateFromRoot_EmitsEvent() public {
         DelegationRegistry.Scope memory scope = _narrowScope();
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         vm.recordLogs();
         bytes32 delId = delegationRegistry.delegateFromRoot(intentId, scope, agent);
 
@@ -128,14 +138,14 @@ contract DelegationRegistryTest is Test {
 
     function test_DelegateFromRoot_RevertNotOwner() public {
         vm.prank(agent);
-        vm.expectRevert("Not intent owner");
+        vm.expectRevert("Not authorized orchestrator");
         delegationRegistry.delegateFromRoot(intentId, _narrowScope(), agent);
     }
 
     function test_DelegateFromRoot_RevertAmountExceedsRoot() public {
         DelegationRegistry.Scope memory scope = _narrowScope();
         scope.maxAmountIn = 2 ether;
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         vm.expectRevert("Amount exceeds root");
         delegationRegistry.delegateFromRoot(intentId, scope, agent);
     }
@@ -143,7 +153,7 @@ contract DelegationRegistryTest is Test {
     function test_DelegateFromRoot_RevertMinOutBelowRoot() public {
         DelegationRegistry.Scope memory scope = _narrowScope();
         scope.minAmountOut = 0.5 ether;
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         vm.expectRevert("MinOut below root");
         delegationRegistry.delegateFromRoot(intentId, scope, agent);
     }
@@ -151,7 +161,7 @@ contract DelegationRegistryTest is Test {
     function test_DelegateFromRoot_RevertDeadlineExceedsRoot() public {
         DelegationRegistry.Scope memory scope = _narrowScope();
         scope.deadline = block.timestamp + 2 hours;
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         vm.expectRevert("Deadline exceeds root");
         delegationRegistry.delegateFromRoot(intentId, scope, agent);
     }
@@ -161,13 +171,13 @@ contract DelegationRegistryTest is Test {
         bytes32[] memory bad = new bytes32[](1);
         bad[0] = keccak256("sushiswap");
         scope.allowedProtocols = bad;
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         vm.expectRevert("Protocols not subset");
         delegationRegistry.delegateFromRoot(intentId, scope, agent);
     }
 
     function test_DelegateFromRoot_RevertIntentNotFound() public {
-        vm.prank(owner);
+        vm.prank(ORCHESTRATOR);
         vm.expectRevert("Intent not found");
         delegationRegistry.delegateFromRoot(bytes32(0), _narrowScope(), agent);
     }
@@ -252,7 +262,7 @@ contract DelegationRegistryTest is Test {
     // -------------------------------------------------------------------------
 
     function test_SetExecutionGate_RevertNotOwner() public {
-        DelegationRegistry fresh = new DelegationRegistry(address(intentRegistry));
+        DelegationRegistry fresh = new DelegationRegistry(address(intentRegistry), address(agentRegistry));
         vm.prank(agent);
         vm.expectRevert("Not owner");
         fresh.setExecutionGate(makeAddr("gate"));
