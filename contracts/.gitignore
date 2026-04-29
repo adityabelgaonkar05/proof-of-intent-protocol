@@ -1,0 +1,9 @@
+# Foundry build artifacts
+out/
+cache/
+
+# Dependencies (reinstall via forge install)
+lib/
+
+# Deployment broadcast logs (commit these if you want on-chain record)
+broadcast/
