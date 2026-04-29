@@ -68,4 +68,8 @@ contract IntentRegistry is EIP712 {
         require(intentExists[intentId], "Intent not found");
         return intents[intentId];
     }
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
 }

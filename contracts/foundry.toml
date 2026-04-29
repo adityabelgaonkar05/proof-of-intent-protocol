@@ -2,6 +2,9 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+test = "test"
+script = "script"
 remappings = [
-    "@openzeppelin/=lib/openzeppelin-contracts/"
+    "@openzeppelin/=lib/openzeppelin-contracts/",
+    "forge-std/=lib/openzeppelin-contracts/lib/forge-std/src/"
 ]

@@ -99,15 +99,17 @@ contract IntentRegistryTest is Test {
     function test_RegisterIntent_RevertExpiredDeadline() public {
         IntentRegistry.Intent memory intent = _buildIntent();
         intent.deadline = block.timestamp - 1;
+        bytes memory sig = _sign(intent);
         vm.expectRevert("Deadline passed");
-        registry.registerIntent(intent, _sign(intent));
+        registry.registerIntent(intent, sig);
     }
 
     function test_RegisterIntent_RevertZeroAmount() public {
         IntentRegistry.Intent memory intent = _buildIntent();
         intent.maxAmountIn = 0;
+        bytes memory sig = _sign(intent);
         vm.expectRevert("Zero amount");
-        registry.registerIntent(intent, _sign(intent));
+        registry.registerIntent(intent, sig);
     }
 
     function test_RegisterIntent_RevertInvalidSignature() public {
