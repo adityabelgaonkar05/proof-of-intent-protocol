@@ -4,6 +4,9 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/IntentRegistry.sol";
 
+bytes32 constant UNISWAP_V3 = keccak256(abi.encodePacked("Uniswap-V3"));
+bytes32 constant CURVE       = keccak256(abi.encodePacked("Curve"));
+
 contract IntentRegistryTest is Test {
     IntentRegistry public registry;
 
@@ -21,8 +24,8 @@ contract IntentRegistryTest is Test {
 
     function _buildIntent() internal view returns (IntentRegistry.Intent memory) {
         bytes32[] memory protocols = new bytes32[](2);
-        protocols[0] = keccak256("uniswap-v3");
-        protocols[1] = keccak256("curve");
+        protocols[0] = UNISWAP_V3;
+        protocols[1] = CURVE;
 
         return IntentRegistry.Intent({
             owner: user,

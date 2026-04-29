@@ -6,6 +6,9 @@ import "../src/IntentRegistry.sol";
 import "../src/DelegationRegistry.sol";
 import "../src/ExecutionGate.sol";
 
+bytes32 constant UNISWAP_V3 = keccak256(abi.encodePacked("Uniswap-V3"));
+bytes32 constant CURVE       = keccak256(abi.encodePacked("Curve"));
+
 contract DelegationRegistryTest is Test {
     IntentRegistry public intentRegistry;
     DelegationRegistry public delegationRegistry;
@@ -30,8 +33,8 @@ contract DelegationRegistryTest is Test {
         subAgent = makeAddr("subAgent");
 
         bytes32[] memory protocols = new bytes32[](2);
-        protocols[0] = keccak256("uniswap-v3");
-        protocols[1] = keccak256("curve");
+        protocols[0] = UNISWAP_V3;
+        protocols[1] = CURVE;
 
         rootIntent = IntentRegistry.Intent({
             owner: owner,
@@ -71,7 +74,7 @@ contract DelegationRegistryTest is Test {
 
     function _narrowScope() internal view returns (DelegationRegistry.Scope memory) {
         bytes32[] memory protocols = new bytes32[](1);
-        protocols[0] = keccak256("uniswap-v3");
+        protocols[0] = UNISWAP_V3;
         return DelegationRegistry.Scope({
             maxAmountIn: 0.5 ether,
             minAmountOut: 0.97 ether,
@@ -175,7 +178,7 @@ contract DelegationRegistryTest is Test {
         bytes32 parentId = _createRootDelegation();
 
         bytes32[] memory protocols = new bytes32[](1);
-        protocols[0] = keccak256("uniswap-v3");
+        protocols[0] = UNISWAP_V3;
         DelegationRegistry.Scope memory childScope = DelegationRegistry.Scope({
             maxAmountIn: 0.3 ether,
             minAmountOut: 0.98 ether,
@@ -235,7 +238,7 @@ contract DelegationRegistryTest is Test {
         bytes32 parentId = _createRootDelegation(); // only uniswap-v3
         DelegationRegistry.Scope memory scope = _narrowScope();
         bytes32[] memory bad = new bytes32[](1);
-        bad[0] = keccak256("curve"); // not in parent scope
+        bad[0] = CURVE; // not in parent scope
         scope.allowedProtocols = bad;
         vm.prank(agent);
         vm.expectRevert("Protocols not subset");

@@ -6,6 +6,9 @@ import "../src/IntentRegistry.sol";
 import "../src/DelegationRegistry.sol";
 import "../src/ExecutionGate.sol";
 
+bytes32 constant UNISWAP_V3 = keccak256(abi.encodePacked("Uniswap-V3"));
+bytes32 constant CURVE       = keccak256(abi.encodePacked("Curve"));
+
 contract ExecutionGateTest is Test {
     IntentRegistry public intentRegistry;
     DelegationRegistry public delegationRegistry;
@@ -30,7 +33,7 @@ contract ExecutionGateTest is Test {
 
         owner  = vm.addr(ownerKey);
         agent  = makeAddr("agent");
-        protocol = keccak256("uniswap-v3");
+        protocol = UNISWAP_V3;
 
         bytes32[] memory protocols = new bytes32[](1);
         protocols[0] = protocol;
