@@ -29,6 +29,7 @@ contract IntentRegistryTest is Test {
 
         return IntentRegistry.Intent({
             owner: user,
+            authorizedOrchestrator: address(0xC0FFEE),
             tokenIn: address(0x1234),
             maxAmountIn: 1 ether,
             minAmountOut: 0.95 ether,
@@ -40,11 +41,12 @@ contract IntentRegistryTest is Test {
 
     function _sign(IntentRegistry.Intent memory intent) internal view returns (bytes memory) {
         bytes32 typehash = keccak256(
-            "Intent(address owner,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
+            "Intent(address owner,address authorizedOrchestrator,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
         );
         bytes32 structHash = keccak256(abi.encode(
             typehash,
             intent.owner,
+            intent.authorizedOrchestrator,
             intent.tokenIn,
             intent.maxAmountIn,
             intent.minAmountOut,
@@ -85,7 +87,7 @@ contract IntentRegistryTest is Test {
         bytes32 intentId = keccak256(abi.encode(intent));
 
         vm.expectEmit(true, true, false, true);
-        emit IntentRegistry.IntentRegistered(intentId, user, 1 ether, intent.deadline);
+        emit IntentRegistry.IntentRegistered(intentId, user, address(0xC0FFEE), 1 ether, intent.deadline);
         registry.registerIntent(intent, _sign(intent));
     }
 
@@ -119,11 +121,12 @@ contract IntentRegistryTest is Test {
         IntentRegistry.Intent memory intent = _buildIntent();
         // Sign with a different key
         bytes32 typehash = keccak256(
-            "Intent(address owner,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
+            "Intent(address owner,address authorizedOrchestrator,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
         );
         bytes32 structHash = keccak256(abi.encode(
             typehash,
             intent.owner,
+            intent.authorizedOrchestrator,
             intent.tokenIn,
             intent.maxAmountIn,
             intent.minAmountOut,

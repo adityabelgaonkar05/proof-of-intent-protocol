@@ -9,6 +9,7 @@ contract IntentRegistry is EIP712 {
 
     struct Intent {
         address owner;
+        address authorizedOrchestrator;
         address tokenIn;
         uint256 maxAmountIn;
         uint256 minAmountOut;
@@ -18,7 +19,7 @@ contract IntentRegistry is EIP712 {
     }
 
     bytes32 private constant INTENT_TYPEHASH = keccak256(
-        "Intent(address owner,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
+        "Intent(address owner,address authorizedOrchestrator,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
     );
 
     mapping(bytes32 => Intent) public intents;
@@ -28,9 +29,11 @@ contract IntentRegistry is EIP712 {
     event IntentRegistered(
         bytes32 indexed intentId,
         address indexed owner,
+        address authorizedOrchestrator,
         uint256 maxAmountIn,
         uint256 deadline
     );
+    event IntentRevoked(bytes32 indexed intentId, address indexed owner);
 
     constructor() EIP712("IntentRegistry", "1") {}
 
@@ -40,10 +43,12 @@ contract IntentRegistry is EIP712 {
     {
         require(intent.deadline > block.timestamp, "Deadline passed");
         require(intent.maxAmountIn > 0, "Zero amount");
+        require(intent.authorizedOrchestrator != address(0), "No orchestrator set");
 
         bytes32 structHash = keccak256(abi.encode(
             INTENT_TYPEHASH,
             intent.owner,
+            intent.authorizedOrchestrator,
             intent.tokenIn,
             intent.maxAmountIn,
             intent.minAmountOut,
@@ -61,7 +66,14 @@ contract IntentRegistry is EIP712 {
         intentExists[intentId] = true;
         nonces[intent.owner]++;
 
-        emit IntentRegistered(intentId, intent.owner, intent.maxAmountIn, intent.deadline);
+        emit IntentRegistered(intentId, intent.owner, intent.authorizedOrchestrator, intent.maxAmountIn, intent.deadline);
+    }
+
+    function revokeIntent(bytes32 intentId) external {
+        require(intents[intentId].owner == msg.sender, "Not owner");
+        require(intentExists[intentId], "Intent not found");
+        intentExists[intentId] = false;
+        emit IntentRevoked(intentId, msg.sender);
     }
 
     function getIntent(bytes32 intentId) external view returns (Intent memory) {

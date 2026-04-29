@@ -40,6 +40,7 @@ contract ExecutionGateTest is Test {
 
         IntentRegistry.Intent memory intent = IntentRegistry.Intent({
             owner: owner,
+            authorizedOrchestrator: address(0xC0FFEE),
             tokenIn: TOKEN_IN,
             maxAmountIn: 1 ether,
             minAmountOut: 0.95 ether,
@@ -65,11 +66,11 @@ contract ExecutionGateTest is Test {
 
     function _signIntent(IntentRegistry.Intent memory intent) internal view returns (bytes memory) {
         bytes32 typehash = keccak256(
-            "Intent(address owner,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
+            "Intent(address owner,address authorizedOrchestrator,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
         );
         bytes32 structHash = keccak256(abi.encode(
             typehash,
-            intent.owner, intent.tokenIn, intent.maxAmountIn, intent.minAmountOut,
+            intent.owner, intent.authorizedOrchestrator, intent.tokenIn, intent.maxAmountIn, intent.minAmountOut,
             keccak256(abi.encodePacked(intent.allowedProtocols)),
             intent.deadline, intent.nonce
         ));
