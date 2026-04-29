@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../src/IntentRegistry.sol";
+import "../src/AgentRegistry.sol";
+import "../src/DelegationRegistry.sol";
 
 bytes32 constant UNISWAP_V3 = keccak256(abi.encodePacked("Uniswap-V3"));
 bytes32 constant CURVE       = keccak256(abi.encodePacked("Curve"));
@@ -159,5 +161,68 @@ contract IntentRegistryTest is Test {
     function test_GetIntent_RevertNotFound() public {
         vm.expectRevert("Intent not found");
         registry.getIntent(bytes32(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // registerIntent — orchestrator field
+    // -------------------------------------------------------------------------
+
+    function test_RegisterIntent_RevertNoOrchestrator() public {
+        IntentRegistry.Intent memory intent = _buildIntent();
+        intent.authorizedOrchestrator = address(0);
+        bytes memory sig = _sign(intent);
+        vm.expectRevert("No orchestrator set");
+        registry.registerIntent(intent, sig);
+    }
+
+    // -------------------------------------------------------------------------
+    // revokeIntent
+    // -------------------------------------------------------------------------
+
+    function test_RevokeIntent() public {
+        IntentRegistry.Intent memory intent = _buildIntent();
+        bytes32 intentId = registry.registerIntent(intent, _sign(intent));
+
+        vm.prank(user);
+        registry.revokeIntent(intentId);
+
+        assertFalse(registry.intentExists(intentId));
+    }
+
+    function test_RevokeIntent_RevertNotOwner() public {
+        IntentRegistry.Intent memory intent = _buildIntent();
+        bytes32 intentId = registry.registerIntent(intent, _sign(intent));
+
+        vm.prank(makeAddr("attacker"));
+        vm.expectRevert("Not owner");
+        registry.revokeIntent(intentId);
+    }
+
+    function test_RevokedIntentBlocked() public {
+        // Stand up a minimal DelegationRegistry to prove the revoked intent is rejected
+        AgentRegistry agentReg = new AgentRegistry();
+        DelegationRegistry delReg = new DelegationRegistry(address(registry), address(agentReg));
+
+        address agent = makeAddr("agent");
+        agentReg.registerAgent(agent, "agent");
+
+        IntentRegistry.Intent memory intent = _buildIntent();
+        bytes32 intentId = registry.registerIntent(intent, _sign(intent));
+
+        vm.prank(user);
+        registry.revokeIntent(intentId);
+
+        bytes32[] memory protocols = new bytes32[](1);
+        protocols[0] = UNISWAP_V3;
+        DelegationRegistry.Scope memory scope = DelegationRegistry.Scope({
+            maxAmountIn: 0.5 ether,
+            minAmountOut: 0.97 ether,
+            allowedProtocols: protocols,
+            deadline: block.timestamp + 30 minutes
+        });
+
+        vm.prank(address(0xC0FFEE));
+        vm.expectRevert("Intent not found");
+        delReg.delegateFromRoot(intentId, scope, agent);
     }
 }

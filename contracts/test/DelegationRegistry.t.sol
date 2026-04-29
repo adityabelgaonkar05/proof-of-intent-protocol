@@ -287,4 +287,44 @@ contract DelegationRegistryTest is Test {
         delegationRegistry.markExecuted(parentId);
         assertTrue(delegationRegistry.getDelegation(parentId).executed);
     }
+
+    // -------------------------------------------------------------------------
+    // New security / invariant tests
+    // -------------------------------------------------------------------------
+
+    function test_DelegateFromRoot_WrongCaller() public {
+        // user wallet (not authorizedOrchestrator) must be rejected
+        vm.prank(owner);
+        vm.expectRevert("Not authorized orchestrator");
+        delegationRegistry.delegateFromRoot(intentId, _narrowScope(), agent);
+    }
+
+    function test_ReplayProtection() public {
+        // First delegation from this intentId succeeds
+        vm.prank(ORCHESTRATOR);
+        delegationRegistry.delegateFromRoot(intentId, _narrowScope(), agent);
+
+        // Second delegation from the same intentId must revert
+        vm.prank(ORCHESTRATOR);
+        vm.expectRevert("Root already delegated");
+        delegationRegistry.delegateFromRoot(intentId, _narrowScope(), agent);
+    }
+
+    function test_UnregisteredAgent() public {
+        address stranger = makeAddr("stranger"); // never registered in agentRegistry
+        vm.prank(ORCHESTRATOR);
+        vm.expectRevert("Target not registered agent");
+        delegationRegistry.delegateFromRoot(intentId, _narrowScope(), stranger);
+    }
+
+    function test_FrozenAgent() public {
+        // Register a fresh agent then immediately freeze it
+        address frozenOne = makeAddr("frozenOne");
+        agentRegistry.registerAgent(frozenOne, "frozenOne");
+        agentRegistry.freezeAgent(frozenOne);
+
+        vm.prank(ORCHESTRATOR);
+        vm.expectRevert("Target not registered agent");
+        delegationRegistry.delegateFromRoot(intentId, _narrowScope(), frozenOne);
+    }
 }
