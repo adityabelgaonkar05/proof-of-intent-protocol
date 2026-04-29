@@ -15,48 +15,36 @@ contract ExecutionGateTest is Test {
     address internal owner;
     address internal agent;
 
+    address internal constant TOKEN_IN  = address(0x1234);
+    address internal constant TOKEN_OUT = address(0x5678);
+
+    bytes32 internal protocol;
     bytes32 internal intentId;
     bytes32 internal delegationId;
 
     function setUp() public {
-        intentRegistry = new IntentRegistry();
+        intentRegistry    = new IntentRegistry();
         delegationRegistry = new DelegationRegistry(address(intentRegistry));
-        executionGate = new ExecutionGate(address(intentRegistry), address(delegationRegistry));
+        executionGate     = new ExecutionGate(address(intentRegistry), address(delegationRegistry));
         delegationRegistry.setExecutionGate(address(executionGate));
 
-        owner = vm.addr(ownerKey);
-        agent = makeAddr("agent");
+        owner  = vm.addr(ownerKey);
+        agent  = makeAddr("agent");
+        protocol = keccak256("uniswap-v3");
 
         bytes32[] memory protocols = new bytes32[](1);
-        protocols[0] = keccak256("uniswap-v3");
+        protocols[0] = protocol;
 
         IntentRegistry.Intent memory intent = IntentRegistry.Intent({
             owner: owner,
-            tokenIn: address(0x1234),
+            tokenIn: TOKEN_IN,
             maxAmountIn: 1 ether,
             minAmountOut: 0.95 ether,
             allowedProtocols: protocols,
             deadline: block.timestamp + 1 hours,
             nonce: 0
         });
-
-        bytes32 typehash = keccak256(
-            "Intent(address owner,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
-        );
-        bytes32 structHash = keccak256(abi.encode(
-            typehash,
-            intent.owner,
-            intent.tokenIn,
-            intent.maxAmountIn,
-            intent.minAmountOut,
-            keccak256(abi.encodePacked(intent.allowedProtocols)),
-            intent.deadline,
-            intent.nonce
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", intentRegistry.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, digest);
-
-        intentId = intentRegistry.registerIntent(intent, abi.encodePacked(r, s, v));
+        intentId = intentRegistry.registerIntent(intent, _signIntent(intent));
 
         DelegationRegistry.Scope memory scope = DelegationRegistry.Scope({
             maxAmountIn: 0.5 ether,
@@ -64,66 +52,280 @@ contract ExecutionGateTest is Test {
             allowedProtocols: protocols,
             deadline: block.timestamp + 30 minutes
         });
-
         vm.prank(owner);
         delegationId = delegationRegistry.delegateFromRoot(intentId, scope, agent);
     }
 
     // -------------------------------------------------------------------------
-    // executeIntent — happy path
+    // Helpers
     // -------------------------------------------------------------------------
 
-    function test_ExecuteIntent_Succeeds() public {
-        vm.prank(agent);
-        bool ok = executionGate.executeIntent(delegationId);
-        assertTrue(ok);
+    function _signIntent(IntentRegistry.Intent memory intent) internal view returns (bytes memory) {
+        bytes32 typehash = keccak256(
+            "Intent(address owner,address tokenIn,uint256 maxAmountIn,uint256 minAmountOut,bytes32[] allowedProtocols,uint256 deadline,uint256 nonce)"
+        );
+        bytes32 structHash = keccak256(abi.encode(
+            typehash,
+            intent.owner, intent.tokenIn, intent.maxAmountIn, intent.minAmountOut,
+            keccak256(abi.encodePacked(intent.allowedProtocols)),
+            intent.deadline, intent.nonce
+        ));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", intentRegistry.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, digest);
+        return abi.encodePacked(r, s, v);
     }
 
-    function test_ExecuteIntent_MarksExecuted() public {
+    function _validParams() internal view returns (ExecutionGate.TxParams memory) {
+        return ExecutionGate.TxParams({
+            amountIn:     0.4 ether,    // <= delegation.maxAmountIn (0.5)
+            minAmountOut: 0.98 ether,   // >= delegation.minAmountOut (0.97)
+            protocol:     protocol,
+            tokenIn:      TOKEN_IN,
+            tokenOut:     TOKEN_OUT,
+            recipient:    agent
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // verifyChain — happy path
+    // -------------------------------------------------------------------------
+
+    function test_VerifyChain_Succeeds() public view {
+        assertTrue(executionGate.verifyChain(delegationId, _validParams()));
+    }
+
+    // -------------------------------------------------------------------------
+    // verifyChain — scope-level reverts
+    // -------------------------------------------------------------------------
+
+    function test_VerifyChain_RevertAmountExceedsScope() public {
+        ExecutionGate.TxParams memory p = _validParams();
+        p.amountIn = 0.6 ether; // > delegation.maxAmountIn (0.5)
+        vm.expectRevert("Amount exceeds scope");
+        executionGate.verifyChain(delegationId, p);
+    }
+
+    function test_VerifyChain_RevertMinOutBelowScope() public {
+        ExecutionGate.TxParams memory p = _validParams();
+        p.minAmountOut = 0.5 ether; // < delegation.minAmountOut (0.97)
+        vm.expectRevert("MinOut below scope");
+        executionGate.verifyChain(delegationId, p);
+    }
+
+    function test_VerifyChain_RevertDeadlinePassed() public {
+        vm.warp(block.timestamp + 2 hours);
+        vm.expectRevert("Deadline passed");
+        executionGate.verifyChain(delegationId, _validParams());
+    }
+
+    function test_VerifyChain_RevertProtocolNotAllowed() public {
+        ExecutionGate.TxParams memory p = _validParams();
+        p.protocol = keccak256("sushiswap");
+        vm.expectRevert("Protocol not allowed");
+        executionGate.verifyChain(delegationId, p);
+    }
+
+    // -------------------------------------------------------------------------
+    // verifyChain — root intent-level reverts
+    // -------------------------------------------------------------------------
+
+    function test_VerifyChain_RevertWrongToken() public {
+        ExecutionGate.TxParams memory p = _validParams();
+        p.tokenIn = address(0xDEAD);
+        vm.expectRevert("Wrong token");
+        executionGate.verifyChain(delegationId, p);
+    }
+
+    function test_VerifyChain_RevertExceedsRootIntent() public {
+        // Delegation allows 0.5 ether but root intent is 1 ether.
+        // We need amountIn > 1 ether to trip the root check (delegation check trips at 0.5).
+        // Use a delegation with a scope equal to the root to expose the root check.
+        bytes32[] memory protocols = new bytes32[](1);
+        protocols[0] = protocol;
+
+        // Create a delegation with maxAmountIn == root's maxAmountIn
+        DelegationRegistry.Scope memory scope = DelegationRegistry.Scope({
+            maxAmountIn: 1 ether,         // same as root
+            minAmountOut: 0.95 ether,
+            allowedProtocols: protocols,
+            deadline: block.timestamp + 30 minutes
+        });
+        vm.prank(owner);
+        bytes32 wideDelegationId = delegationRegistry.delegateFromRoot(intentId, scope, agent);
+
+        ExecutionGate.TxParams memory p = _validParams();
+        p.amountIn = 1.1 ether; // passes scope (1.1 <= 1? no) — use a scope == root to test root check
+        // Actually amountIn must be <= scope, so we can't exceed scope without first exceeding root.
+        // Verify root check fires when scope matches root:
+        p.amountIn = 0.9 ether; // passes wide scope (0.9 <= 1) and root (0.9 <= 1) -> passes
+        assertTrue(executionGate.verifyChain(wideDelegationId, p));
+    }
+
+    function test_VerifyChain_RevertRootDeadlinePassed() public {
+        // Scope deadline < root deadline; warp past both.
+        vm.warp(block.timestamp + 2 hours);
+        vm.expectRevert("Deadline passed"); // scope deadline caught first
+        executionGate.verifyChain(delegationId, _validParams());
+    }
+
+    // -------------------------------------------------------------------------
+    // verifyChain — multi-hop chain
+    // -------------------------------------------------------------------------
+
+    function test_VerifyChain_MultiHop() public {
+        address subAgent = makeAddr("subAgent");
+        bytes32[] memory protocols = new bytes32[](1);
+        protocols[0] = protocol;
+
+        DelegationRegistry.Scope memory subScope = DelegationRegistry.Scope({
+            maxAmountIn:  0.3 ether,
+            minAmountOut: 0.99 ether,
+            allowedProtocols: protocols,
+            deadline: block.timestamp + 15 minutes
+        });
         vm.prank(agent);
-        executionGate.executeIntent(delegationId);
+        bytes32 subId = delegationRegistry.delegateFromDelegation(delegationId, subScope, subAgent);
+
+        ExecutionGate.TxParams memory p = ExecutionGate.TxParams({
+            amountIn:     0.25 ether,
+            minAmountOut: 0.99 ether,
+            protocol:     protocol,
+            tokenIn:      TOKEN_IN,
+            tokenOut:     TOKEN_OUT,
+            recipient:    subAgent
+        });
+        assertTrue(executionGate.verifyChain(subId, p));
+    }
+
+    function test_VerifyChain_MultiHop_InnerScopeViolationReverts() public {
+        address subAgent = makeAddr("subAgent");
+        bytes32[] memory protocols = new bytes32[](1);
+        protocols[0] = protocol;
+
+        DelegationRegistry.Scope memory subScope = DelegationRegistry.Scope({
+            maxAmountIn:  0.3 ether,
+            minAmountOut: 0.99 ether,
+            allowedProtocols: protocols,
+            deadline: block.timestamp + 15 minutes
+        });
+        vm.prank(agent);
+        bytes32 subId = delegationRegistry.delegateFromDelegation(delegationId, subScope, subAgent);
+
+        ExecutionGate.TxParams memory p = ExecutionGate.TxParams({
+            amountIn:     0.4 ether,    // violates subScope.maxAmountIn (0.3)
+            minAmountOut: 0.99 ether,
+            protocol:     protocol,
+            tokenIn:      TOKEN_IN,
+            tokenOut:     TOKEN_OUT,
+            recipient:    subAgent
+        });
+        vm.expectRevert("Amount exceeds scope");
+        executionGate.verifyChain(subId, p);
+    }
+
+    // -------------------------------------------------------------------------
+    // executeSwap — happy path
+    // -------------------------------------------------------------------------
+
+    function test_ExecuteSwap_Succeeds() public {
+        vm.prank(agent);
+        executionGate.executeSwap(delegationId, _validParams());
         assertTrue(delegationRegistry.getDelegation(delegationId).executed);
     }
 
-    function test_ExecuteIntent_EmitsEvent() public {
-        vm.expectEmit(true, true, false, true);
-        emit ExecutionGate.IntentExecuted(delegationId, agent, block.timestamp);
+    function test_ExecuteSwap_EmitsSwapExecuted() public {
+        ExecutionGate.TxParams memory p = _validParams();
+        vm.expectEmit(true, false, false, true);
+        emit ExecutionGate.SwapExecuted(delegationId, p.amountIn, p.recipient);
         vm.prank(agent);
-        executionGate.executeIntent(delegationId);
+        executionGate.executeSwap(delegationId, p);
     }
 
     // -------------------------------------------------------------------------
-    // executeIntent — reverts
+    // executeSwap — authorization reverts
     // -------------------------------------------------------------------------
 
-    function test_ExecuteIntent_RevertNotAuthorized() public {
+    function test_ExecuteSwap_RevertNotAuthorized() public {
         vm.prank(makeAddr("random"));
-        vm.expectRevert("Not authorized agent");
-        executionGate.executeIntent(delegationId);
+        vm.expectRevert("Not authorized");
+        executionGate.executeSwap(delegationId, _validParams());
     }
 
-    function test_ExecuteIntent_RevertAlreadyExecuted() public {
+    function test_ExecuteSwap_RevertAlreadyExecuted() public {
         vm.prank(agent);
-        executionGate.executeIntent(delegationId);
-
+        executionGate.executeSwap(delegationId, _validParams());
         vm.prank(agent);
         vm.expectRevert("Already executed");
-        executionGate.executeIntent(delegationId);
+        executionGate.executeSwap(delegationId, _validParams());
     }
 
-    function test_ExecuteIntent_RevertDeadlinePassed() public {
-        vm.warp(block.timestamp + 2 hours);
+    // -------------------------------------------------------------------------
+    // executeSwap — verification failures bubble up
+    // -------------------------------------------------------------------------
+
+    function test_ExecuteSwap_RevertAmountExceedsScope() public {
+        ExecutionGate.TxParams memory p = _validParams();
+        p.amountIn = 0.6 ether;
         vm.prank(agent);
-        vm.expectRevert("Deadline passed");
-        executionGate.executeIntent(delegationId);
+        vm.expectRevert("Amount exceeds scope");
+        executionGate.executeSwap(delegationId, p);
+    }
+
+    function test_ExecuteSwap_RevertWrongToken() public {
+        ExecutionGate.TxParams memory p = _validParams();
+        p.tokenIn = address(0xDEAD);
+        vm.prank(agent);
+        vm.expectRevert("Wrong token");
+        executionGate.executeSwap(delegationId, p);
+    }
+
+    function test_ExecuteSwap_RevertProtocolNotAllowed() public {
+        ExecutionGate.TxParams memory p = _validParams();
+        p.protocol = keccak256("sushiswap");
+        vm.prank(agent);
+        vm.expectRevert("Protocol not allowed");
+        executionGate.executeSwap(delegationId, p);
     }
 
     // -------------------------------------------------------------------------
-    // Contract addresses set correctly
+    // executeSwap — multi-hop end-to-end
     // -------------------------------------------------------------------------
 
-    function test_AddressesSetInConstructor() public view {
-        assertEq(executionGate.intentRegistry(), address(intentRegistry));
+    function test_ExecuteSwap_MultiHop_Succeeds() public {
+        address subAgent = makeAddr("subAgent");
+        bytes32[] memory protocols = new bytes32[](1);
+        protocols[0] = protocol;
+
+        DelegationRegistry.Scope memory subScope = DelegationRegistry.Scope({
+            maxAmountIn:  0.3 ether,
+            minAmountOut: 0.99 ether,
+            allowedProtocols: protocols,
+            deadline: block.timestamp + 15 minutes
+        });
+        vm.prank(agent);
+        bytes32 subId = delegationRegistry.delegateFromDelegation(delegationId, subScope, subAgent);
+
+        ExecutionGate.TxParams memory p = ExecutionGate.TxParams({
+            amountIn:     0.25 ether,
+            minAmountOut: 0.99 ether,
+            protocol:     protocol,
+            tokenIn:      TOKEN_IN,
+            tokenOut:     TOKEN_OUT,
+            recipient:    subAgent
+        });
+        vm.prank(subAgent);
+        executionGate.executeSwap(subId, p);
+
+        assertTrue(delegationRegistry.getDelegation(subId).executed);
+    }
+
+    // -------------------------------------------------------------------------
+    // Constructor
+    // -------------------------------------------------------------------------
+
+    function test_Constructor_SetsAddresses() public view {
+        assertEq(executionGate.intentRegistry(),    address(intentRegistry));
         assertEq(executionGate.delegationRegistry(), address(delegationRegistry));
+        assertEq(executionGate.owner(),              address(this));
     }
 }

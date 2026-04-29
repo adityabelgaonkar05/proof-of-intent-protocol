@@ -175,21 +175,51 @@ DELEGATION_REGISTRY_ABI = [
     },
 ]
 
+_TX_PARAMS_COMPONENTS = [
+    {"name": "amountIn",     "type": "uint256"},
+    {"name": "minAmountOut", "type": "uint256"},
+    {"name": "protocol",     "type": "bytes32"},
+    {"name": "tokenIn",      "type": "address"},
+    {"name": "tokenOut",     "type": "address"},
+    {"name": "recipient",    "type": "address"},
+]
+
 EXECUTION_GATE_ABI = [
     {
-        "name": "executeIntent",
+        "name": "verifyChain",
         "type": "function",
-        "stateMutability": "nonpayable",
-        "inputs": [{"name": "delegationId", "type": "bytes32"}],
+        "stateMutability": "view",
+        "inputs": [
+            {"name": "delegationId", "type": "bytes32"},
+            {"name": "params", "type": "tuple", "components": _TX_PARAMS_COMPONENTS},
+        ],
         "outputs": [{"name": "", "type": "bool"}],
     },
     {
-        "name": "IntentExecuted",
+        "name": "executeSwap",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+            {"name": "delegationId", "type": "bytes32"},
+            {"name": "params", "type": "tuple", "components": _TX_PARAMS_COMPONENTS},
+        ],
+        "outputs": [],
+    },
+    {
+        "name": "SwapExecuted",
         "type": "event",
         "inputs": [
             {"name": "delegationId", "type": "bytes32", "indexed": True},
-            {"name": "executor", "type": "address", "indexed": True},
-            {"name": "timestamp", "type": "uint256", "indexed": False},
+            {"name": "amountIn",     "type": "uint256", "indexed": False},
+            {"name": "recipient",    "type": "address", "indexed": False},
+        ],
+    },
+    {
+        "name": "ChainVerificationFailed",
+        "type": "event",
+        "inputs": [
+            {"name": "delegationId", "type": "bytes32", "indexed": True},
+            {"name": "reason",       "type": "string",  "indexed": False},
         ],
     },
 ]

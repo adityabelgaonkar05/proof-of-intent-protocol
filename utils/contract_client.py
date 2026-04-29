@@ -232,15 +232,29 @@ def extract_intent_id_from_receipt(receipt: TxReceipt) -> str:
 # ExecutionGate helpers
 # ---------------------------------------------------------------------------
 
-def execute_intent(w3: Web3, delegation_id: str, private_key: str) -> TxReceipt:
+def verify_chain(w3: Web3, delegation_id: str, tx_params: dict) -> bool:
+    """
+    Call verifyChain as a view function (no gas).
+    tx_params keys: amountIn, minAmountOut, protocol (hex), tokenIn, tokenOut, recipient
+    """
+    gate = get_execution_gate(w3)
+    raw_id = bytes.fromhex(delegation_id[2:] if delegation_id.startswith("0x") else delegation_id)
+    params_tuple = _build_tx_params_tuple(tx_params)
+    return gate.functions.verifyChain(raw_id, params_tuple).call()
+
+
+def execute_swap(w3: Web3, delegation_id: str, tx_params: dict, private_key: str) -> TxReceipt:
+    """
+    Broadcast executeSwap and return the receipt.
+    tx_params keys: amountIn, minAmountOut, protocol (hex), tokenIn, tokenOut, recipient
+    """
     gate = get_execution_gate(w3)
     account = w3.eth.account.from_key(private_key)
 
-    raw_id = bytes.fromhex(
-        delegation_id[2:] if delegation_id.startswith("0x") else delegation_id
-    )
+    raw_id = bytes.fromhex(delegation_id[2:] if delegation_id.startswith("0x") else delegation_id)
+    params_tuple = _build_tx_params_tuple(tx_params)
 
-    tx = gate.functions.executeIntent(raw_id).build_transaction(
+    tx = gate.functions.executeSwap(raw_id, params_tuple).build_transaction(
         {
             "from": account.address,
             "nonce": w3.eth.get_transaction_count(account.address),
@@ -250,3 +264,16 @@ def execute_intent(w3: Web3, delegation_id: str, private_key: str) -> TxReceipt:
     signed = account.sign_transaction(tx)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     return w3.eth.wait_for_transaction_receipt(tx_hash)
+
+
+def _build_tx_params_tuple(tx_params: dict) -> tuple:
+    protocol = tx_params["protocol"]
+    protocol_bytes = bytes.fromhex(protocol[2:] if protocol.startswith("0x") else protocol)
+    return (
+        tx_params["amountIn"],
+        tx_params["minAmountOut"],
+        protocol_bytes,
+        Web3.to_checksum_address(tx_params["tokenIn"]),
+        Web3.to_checksum_address(tx_params["tokenOut"]),
+        Web3.to_checksum_address(tx_params["recipient"]),
+    )
