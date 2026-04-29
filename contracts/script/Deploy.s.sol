@@ -19,8 +19,18 @@ contract Deploy is Script {
 
         vm.stopBroadcast();
 
-        console.log("INTENT_REGISTRY_ADDRESS=%s", address(intentRegistry));
-        console.log("DELEGATION_REGISTRY_ADDRESS=%s", address(delegationRegistry));
-        console.log("EXECUTION_GATE_ADDRESS=%s", address(executionGate));
+        console.log("INTENT_REGISTRY_ADDRESS   =", address(intentRegistry));
+        console.log("DELEGATION_REGISTRY_ADDRESS =", address(delegationRegistry));
+        console.log("EXECUTION_GATE_ADDRESS      =", address(executionGate));
+
+        string memory json = string.concat(
+            '{\n',
+            '  "intentRegistry": "',      vm.toString(address(intentRegistry)),      '",\n',
+            '  "delegationRegistry": "',  vm.toString(address(delegationRegistry)),  '",\n',
+            '  "executionGate": "',       vm.toString(address(executionGate)),       '"\n',
+            '}'
+        );
+        vm.writeFile("../config/deployed.json", json);
+        console.log("Addresses written to config/deployed.json");
     }
 }
