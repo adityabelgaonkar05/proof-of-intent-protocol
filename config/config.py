@@ -16,7 +16,11 @@ def _require(name: str) -> str:
     return value
 
 
-CLAUDE_API_KEY = _require("CLAUDE_API_KEY")
+USE_CLAUDE: bool = os.getenv("USE_CLAUDE", "true").strip().lower() != "false"
+
+CLAUDE_API_KEY: str = _require("CLAUDE_API_KEY") if USE_CLAUDE else os.getenv("CLAUDE_API_KEY", "")
+OPENAI_API_KEY: str = _require("OPENAI_API_KEY") if not USE_CLAUDE else os.getenv("OPENAI_API_KEY", "")
+
 RPC_URL = os.getenv("RPC_URL", "https://sepolia.base.org")
 DEPLOYER_PRIVATE_KEY = _require("DEPLOYER_PRIVATE_KEY")
 USER_PRIVATE_KEY = _require("USER_PRIVATE_KEY")
