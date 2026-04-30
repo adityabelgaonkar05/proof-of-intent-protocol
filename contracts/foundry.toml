@@ -9,3 +9,7 @@ remappings = [
     "forge-std/=lib/openzeppelin-contracts/lib/forge-std/src/"
 ]
 fs_permissions = [{ access = "read-write", path = "../" }]
+
+[lint]
+# block.timestamp is intentional here — deadlines are the correct use case.
+exclude_lints = ["block-timestamp"]

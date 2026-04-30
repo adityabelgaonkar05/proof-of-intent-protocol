@@ -18,6 +18,9 @@ from __future__ import annotations
 
 import os
 import pathlib
+import sys as _sys
+if __package__ is None:
+    _sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 import signal
 import subprocess
 import sys

@@ -76,9 +76,9 @@ EXECUTION_GATE_ABI = _load_abi("ExecutionGate")
 # 0G Network — decentralised storage for intent NFTs
 # ---------------------------------------------------------------------------
 
-ZG_API_KEY: str = os.getenv("0G_API_KEY", "").strip()
-ZG_RPC_URL: str = os.getenv("0G_RPC_URL", "https://evmrpc-testnet.0g.ai")
-ZG_INDEXER_URL: str = os.getenv("0G_INDEXER_URL", "https://indexer-storage-testnet-turbo.0g.ai")
+ZG_API_KEY: str = os.getenv("ZG_API_KEY", "").strip()
+ZG_RPC_URL: str = os.getenv("ZG_RPC_URL", "https://evmrpc-testnet.0g.ai")
+ZG_INDEXER_URL: str = os.getenv("ZG_INDEXER_URL", "https://indexer-storage-testnet-turbo.0g.ai")
 
 # ---------------------------------------------------------------------------
 # Protocol identifiers (keccak256 of protocol name)

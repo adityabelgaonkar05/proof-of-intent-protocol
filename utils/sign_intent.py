@@ -1,3 +1,7 @@
+import os as _os, sys as _sys
+if __package__ is None:  # running as script, not as part of the package
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 from web3 import Web3
@@ -60,10 +64,14 @@ def build_intent(
 
 if __name__ == "__main__":
     import os
+    import sys
     import time
+    # Ensure project root is on sys.path when run as a script.
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from dotenv import load_dotenv
 
     load_dotenv()
+    from config.config import USDC_ADDRESS
 
     private_key = os.environ["USER_PRIVATE_KEY"]
     owner = Account.from_key(private_key).address
@@ -71,7 +79,7 @@ if __name__ == "__main__":
     intent = build_intent(
         owner=owner,
         authorized_orchestrator=owner,  # use self as orchestrator for standalone test
-        token_in="0x036CbD53842c5426634e7929541eC2318f3dCF7e",  # USDC on Base Sepolia
+        token_in=USDC_ADDRESS,
         max_amount_in=100 * 10**6,   # 100 USDC
         min_amount_out=99 * 10**18,  # 99 output tokens
         allowed_protocols=["Uniswap-V3"],

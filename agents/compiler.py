@@ -1,4 +1,7 @@
 import json
+import os as _os, sys as _sys
+if __package__ is None:
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 from config.config import USE_CLAUDE, CLAUDE_API_KEY, OPENAI_API_KEY
 

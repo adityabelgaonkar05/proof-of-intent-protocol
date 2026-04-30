@@ -69,7 +69,7 @@ class ContractClient:
         })
         signed = self.account.sign_transaction(tx)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
         if receipt.status == 0:
             raise Exception("Transaction reverted")
         return receipt
@@ -104,14 +104,18 @@ class ContractClient:
         Failure is always non-blocking: errors are printed as warnings.
         """
         if not ZG_API_KEY:
-            print("0G storage skipped: 0G_API_KEY not set.")
+            print("0G storage skipped: ZG_API_KEY not set.")
             return None
 
-        try:
-            from core.indexer import Indexer
-            from core.file import ZgFile
-        except ImportError:
-            print("Warning [0G]: 0g-storage-sdk not installed (pip install 0g-storage-sdk).")
+        # The 0g-sdk's top-level packages (`core`, `utils`, `config`) conflict
+        # with our project's own packages of the same names. Importing from
+        # `core` in-process fails because our `utils` and `config` shadow the
+        # SDK's own copies. Run the upload in a subprocess with the project root
+        # stripped from PYTHONPATH so the 0g-sdk resolves its own namespaces.
+        import subprocess as _sp, sys as _sys, pathlib as _pl
+        _helper = _pl.Path(__file__).parent.parent / "scripts" / "zg_upload.py"
+        if not _helper.exists():
+            print("Warning [0G]: upload helper script not found.")
             return None
 
         try:
@@ -129,27 +133,24 @@ class ContractClient:
             }
             payload = json.dumps(metadata, separators=(",", ":")).encode()
 
-            zg_account = Account.from_key(ZG_API_KEY)
-            file = ZgFile.from_bytes(payload)
-            indexer = Indexer(ZG_INDEXER_URL)
+            # Build a clean env: venv Python but without the project root on PYTHONPATH.
+            _env = {k: v for k, v in __import__("os").environ.items()}
+            _env.pop("PYTHONPATH", None)
 
-            upload_opts = {
-                "tags": b"\x00",
-                "finalityRequired": True,
-                "taskSize": 10,
-                "expectedReplica": 1,
-                "skipTx": False,
-                "fee": 0,
-                "account": zg_account,
-            }
-
-            result, err = indexer.upload(file, ZG_RPC_URL, zg_account, upload_opts)
-
-            if err is not None:
-                print(f"Warning [0G]: upload failed — {err}")
+            _proc = _sp.run(
+                [_sys.executable, str(_helper), ZG_API_KEY, ZG_RPC_URL, ZG_INDEXER_URL],
+                input=payload,
+                capture_output=True,
+                env=_env,
+                timeout=120,
+            )
+            _out = _proc.stdout.decode().strip()
+            if _out.startswith("ERROR:") or _proc.returncode != 0:
+                _err = _out[6:] if _out.startswith("ERROR:") else (_proc.stderr.decode().strip() or _out)
+                print(f"Warning [0G]: upload failed — {_err}")
                 return None
 
-            ref = result.get("rootHash", "") or result.get("txHash", "")
+            ref = _out
             print(f"Intent stored on 0G: {ref}")
             return ref
 

@@ -10,8 +10,11 @@ Usage:
     python -m agents.demo
 """
 
+import os as _os, sys, pathlib as _pl
+if __package__ is None:
+    sys.path.insert(0, str(_pl.Path(__file__).parent.parent))
+
 import time
-import sys
 
 from web3 import Web3
 

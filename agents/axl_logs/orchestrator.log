@@ -9,5 +9,5 @@
 [node] TLS listener started on 127.0.0.1:9001
 Listening on 127.0.0.1:9002
 TCP Listener started on port 7000
-[node] Connected inbound: 201:1531:da24:566a:bce7:640f:5f1f:48bb@127.0.0.1:59251, source 127.0.0.1:9001
-[node] Disconnected inbound: 201:1531:da24:566a:bce7:640f:5f1f:48bb@127.0.0.1:59251, source 127.0.0.1:9001
+[node] Connected inbound: 201:1531:da24:566a:bce7:640f:5f1f:48bb@127.0.0.1:50667, source 127.0.0.1:9001
+[node] Disconnected inbound: 201:1531:da24:566a:bce7:640f:5f1f:48bb@127.0.0.1:50667, source 127.0.0.1:9001
