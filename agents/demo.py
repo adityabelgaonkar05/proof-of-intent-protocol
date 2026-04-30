@@ -81,7 +81,7 @@ def run_demo() -> None:
 
     # ── Banner ──────────────────────────────────────────────────────────────
     print_header("INTENT CUSTODY PROTOCOL — LIVE DEMO")
-    print("Chain: Base Sepolia")
+    print("Chain: Ethereum Sepolia")
     print("Contracts deployed at:")
     print(f"  IntentRegistry:     {INTENT_REGISTRY_ADDRESS}")
     print(f"  DelegationRegistry: {DELEGATION_REGISTRY_ADDRESS}")
@@ -132,7 +132,7 @@ def run_demo() -> None:
     intent_id_1 = user_client.register_intent(intent_1, sig_1)
 
     print(f"  intentId: {intent_id_1}")
-    print("  Intent is now immutable on Base Sepolia.")
+    print("  Intent is now immutable on Ethereum Sepolia.")
     time.sleep(1)
 
     # ── Step 3: Orchestrator creates root delegation ─────────────────────────
@@ -192,7 +192,9 @@ def run_demo() -> None:
 
     tx_hash = exec_client.execute_swap(delegation_id_2, tx_params)
 
-    print(f"  tx hash: {tx_hash}")
+    tx_hex = tx_hash if tx_hash.startswith("0x") else "0x" + tx_hash
+    print(f"  tx hash: {tx_hex}")
+    print(f"  https://sepolia.etherscan.io/tx/{tx_hex}")
     print("  SWAP EXECUTED SUCCESSFULLY")
     time.sleep(2)
 
@@ -273,9 +275,9 @@ def run_demo() -> None:
 
     # ── Final banner ─────────────────────────────────────────────────────────
     print_header("DEMO COMPLETE")
-    print("  Both scenarios ran on Base Sepolia.")
-    print("  All transactions are verifiable on Basescan.")
-    print(f"  https://sepolia.basescan.org/address/{EXECUTION_GATE_ADDRESS}")
+    print("  Both scenarios ran on Ethereum Sepolia.")
+    print("  All transactions are verifiable on Etherscan.")
+    print(f"  https://sepolia.etherscan.io/address/{EXECUTION_GATE_ADDRESS}")
 
 
 if __name__ == "__main__":

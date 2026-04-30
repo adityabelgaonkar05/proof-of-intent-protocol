@@ -45,7 +45,7 @@ def build_intent(
     deadline: int,
     nonce: int,
 ) -> dict:
-    protocol_hashes = [Web3.keccak(text=name).hex() for name in allowed_protocols]
+    protocol_hashes = [Web3.keccak(text=name) for name in allowed_protocols]
     return {
         "owner": Web3.to_checksum_address(owner),
         "authorizedOrchestrator": Web3.to_checksum_address(authorized_orchestrator),

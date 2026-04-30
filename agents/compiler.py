@@ -42,7 +42,8 @@ def _call_openai(natural_language: str) -> str:
     client = OpenAI(api_key=OPENAI_API_KEY)
     response = client.chat.completions.create(
         model="gpt-5-mini",
-        max_tokens=500,
+        max_completion_tokens=4000,
+        reasoning_effort="minimal",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": natural_language},

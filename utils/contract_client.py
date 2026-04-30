@@ -21,8 +21,10 @@ def _strip(hex_str: str) -> str:
     return hex_str[2:] if hex_str.startswith("0x") else hex_str
 
 
-def _b32(hex_str: str) -> bytes:
-    return bytes.fromhex(_strip(hex_str))
+def _b32(value) -> bytes:
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value)
+    return bytes.fromhex(_strip(value))
 
 
 class ContractClient:

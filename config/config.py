@@ -21,10 +21,10 @@ USE_CLAUDE: bool = os.getenv("USE_CLAUDE", "true").strip().lower() != "false"
 CLAUDE_API_KEY: str = _require("CLAUDE_API_KEY") if USE_CLAUDE else os.getenv("CLAUDE_API_KEY", "")
 OPENAI_API_KEY: str = _require("OPENAI_API_KEY") if not USE_CLAUDE else os.getenv("OPENAI_API_KEY", "")
 
-RPC_URL = os.getenv("RPC_URL", "https://sepolia.base.org")
+RPC_URL = os.getenv("RPC_URL", "https://ethereum-sepolia-rpc.publicnode.com")
 DEPLOYER_PRIVATE_KEY = _require("DEPLOYER_PRIVATE_KEY")
 USER_PRIVATE_KEY = _require("USER_PRIVATE_KEY")
-CHAIN_ID = 84532  # Base Sepolia
+CHAIN_ID = int(os.getenv("CHAIN_ID", "11155111"))
 
 # ---------------------------------------------------------------------------
 # Agent Ethereum wallet addresses
