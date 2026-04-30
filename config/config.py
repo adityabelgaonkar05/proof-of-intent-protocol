@@ -40,9 +40,10 @@ RESEARCH_AGENT_ADDRESS: str  = _Account.from_key(RESEARCH_PRIVATE_KEY).address
 EXECUTION_AGENT_ADDRESS: str = _Account.from_key(EXECUTION_PRIVATE_KEY).address
 USER_ADDRESS: str            = _Account.from_key(USER_PRIVATE_KEY).address
 
-# Token addresses on Base Sepolia (override via env vars for other networks)
-USDC_ADDRESS: str = os.getenv("USDC_ADDRESS", "0x036CbD53842c5426634e7929541eC2318f3dCF7e")
-WETH_ADDRESS: str = os.getenv("WETH_ADDRESS", "0x4200000000000000000000000000000000000006")
+# Token addresses on Ethereum Sepolia
+USDC_ADDRESS: str = os.getenv("USDC_ADDRESS", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
+WETH_ADDRESS: str = os.getenv("WETH_ADDRESS", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14")
+UNISWAP_ROUTER_ADDRESS: str = os.getenv("UNISWAP_ROUTER_ADDRESS", "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48")
 
 # ---------------------------------------------------------------------------
 # Deployed contract addresses

@@ -32,6 +32,7 @@ from config.config import (
     EXECUTION_GATE_ADDRESS,
     USDC_ADDRESS,
     WETH_ADDRESS,
+    UNISWAP_ROUTER_ADDRESS,
 )
 from utils.sign_intent import build_intent, sign_intent
 from utils.contract_client import ContractClient
@@ -186,6 +187,15 @@ def run_demo() -> None:
         "recipient":    USER_ADDRESS,
     }
 
+    # --- Before balances ---
+    usdc_before = user_client.token_balance(USDC_ADDRESS, USER_ADDRESS)
+    weth_before = user_client.token_balance(WETH_ADDRESS, USER_ADDRESS)
+    eth_before  = user_client.w3.eth.get_balance(USER_ADDRESS)
+    print(f"  Before balances ({USER_ADDRESS[:10]}...):")
+    print(f"    USDC: {usdc_before / 1e6:.6f}")
+    print(f"    WETH: {weth_before / 1e18:.6f}")
+    print(f"    ETH:  {eth_before  / 1e18:.6f}")
+
     print(f"  Verifying chain: {delegation_id_2[:18]}...")
     print(f"    -> {delegation_id_1[:18]}...  (Orchestrator delegation)")
     print(f"    -> rootIntent   {intent_id_1[:18]}...")
@@ -193,9 +203,24 @@ def run_demo() -> None:
     chain_ok = exec_client.verify_chain(delegation_id_2, tx_params)
     print(f"  All checks passed: {chain_ok}")
 
+    # User approves ExecutionGate to spend USDC (checks allowance first).
+    print(f"  Approving ExecutionGate to spend {_RESEARCH_MAX_USDC / 1e6:.0f} USDC...")
+    user_client.ensure_token_approval(USDC_ADDRESS, EXECUTION_GATE_ADDRESS, _RESEARCH_MAX_USDC)
+    print("  Approval confirmed.")
+
     tx_hash = exec_client.execute_swap(delegation_id_2, tx_params)
 
     tx_hex = tx_hash if tx_hash.startswith("0x") else "0x" + tx_hash
+
+    # --- After balances ---
+    usdc_after = user_client.token_balance(USDC_ADDRESS, USER_ADDRESS)
+    weth_after = user_client.token_balance(WETH_ADDRESS, USER_ADDRESS)
+    eth_after  = user_client.w3.eth.get_balance(USER_ADDRESS)
+    print(f"  After balances ({USER_ADDRESS[:10]}...):")
+    print(f"    USDC: {usdc_after / 1e6:.6f}  (delta: {(usdc_after - usdc_before) / 1e6:+.6f})")
+    print(f"    WETH: {weth_after / 1e18:.6f}  (delta: {(weth_after - weth_before) / 1e18:+.6f})")
+    print(f"    ETH:  {eth_after  / 1e18:.6f}  (delta: {(eth_after  - eth_before)  / 1e18:+.6f})")
+
     print(f"  tx hash: {tx_hex}")
     print(f"  https://sepolia.etherscan.io/tx/{tx_hex}")
     print("  SWAP EXECUTED SUCCESSFULLY")

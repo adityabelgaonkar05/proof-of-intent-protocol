@@ -5,10 +5,26 @@ import "./IntentRegistry.sol";
 import "./DelegationRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// Matches SwapRouter02 (0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48 on Sepolia).
+// No deadline field — SwapRouter02 removed it vs SwapRouter01.
+interface ISwapRouter {
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24  fee;
+        address recipient;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+    function exactInputSingle(ExactInputSingleParams calldata params) external returns (uint256 amountOut);
+}
+
 contract ExecutionGate {
     address public intentRegistry;
     address public delegationRegistry;
     address public owner;
+    ISwapRouter public immutable UNISWAP_ROUTER;
 
     struct TxParams {
         uint256 amountIn;
@@ -25,10 +41,11 @@ contract ExecutionGate {
     // on-chain — it exists as a diagnostic marker for off-chain simulation tools.
     event ChainVerificationFailed(bytes32 indexed delegationId, string reason);
 
-    constructor(address _intentRegistry, address _delegationRegistry) {
+    constructor(address _intentRegistry, address _delegationRegistry, address _uniswapRouter) {
         intentRegistry = _intentRegistry;
         delegationRegistry = _delegationRegistry;
         owner = msg.sender;
+        UNISWAP_ROUTER = ISwapRouter(_uniswapRouter);
     }
 
     // -------------------------------------------------------------------------
@@ -81,17 +98,35 @@ contract ExecutionGate {
         require(msg.sender == delegation.delegatedTo, "Not authorized");
         require(!delegation.executed, "Already executed");
 
-        try this.verifyChain(delegationId, params) {
-            registry.markExecuted(delegationId);
-            emit SwapExecuted(delegationId, params.amountIn, params.recipient);
-            // Production: call the DEX router here using params.tokenIn/tokenOut/amountIn.
-        } catch Error(string memory reason) {
+        try this.verifyChain(delegationId, params) {} catch Error(string memory reason) {
             emit ChainVerificationFailed(delegationId, reason);
             revert(reason);
         } catch {
             emit ChainVerificationFailed(delegationId, "Unknown verification error");
             revert("Chain verification failed");
         }
+
+        // Mark executed before external calls (checks-effects-interactions).
+        registry.markExecuted(delegationId);
+
+        // Pull tokenIn from recipient (who must have approved ExecutionGate).
+        IERC20(params.tokenIn).transferFrom(params.recipient, address(this), params.amountIn);
+
+        // Approve router then execute the swap.
+        IERC20(params.tokenIn).approve(address(UNISWAP_ROUTER), params.amountIn);
+        UNISWAP_ROUTER.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn:           params.tokenIn,
+                tokenOut:          params.tokenOut,
+                fee:               3000,    // 0.3% tier — standard for USDC/WETH
+                recipient:         params.recipient,
+                amountIn:          params.amountIn,
+                amountOutMinimum:  params.minAmountOut,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        emit SwapExecuted(delegationId, params.amountIn, params.recipient);
     }
 
     // -------------------------------------------------------------------------

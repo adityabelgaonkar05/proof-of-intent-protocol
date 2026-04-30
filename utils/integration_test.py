@@ -7,9 +7,10 @@ Requires a local Anvil node:
 Run with:
     python -m utils.integration_test
 
-The test deploys all four contracts from the Foundry build artifacts,
-registers agents, runs the full delegation-and-execution flow, then
-confirms that a scope-exceeding delegation is correctly rejected.
+The test deploys all four contracts plus a MockERC20 and MockSwapRouter from the
+Foundry build artifacts, registers agents, runs the full delegation-and-execution
+flow (including real tokenIn transferFrom + router call), then confirms that a
+scope-exceeding delegation is correctly rejected.
 """
 
 import json
@@ -27,7 +28,6 @@ from web3.exceptions import ContractLogicError
 _ROOT = pathlib.Path(__file__).parent.parent
 _OUT  = _ROOT / "contracts" / "out"
 
-TOKEN_IN  = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 TOKEN_OUT = "0x0000000000000000000000000000000000000001"
 CHAIN_ID  = 31337  # Anvil default
 
@@ -43,7 +43,7 @@ def _deploy(w3, artifact, deployer, *constructor_args):
     contract = w3.eth.contract(abi=abi, bytecode=bytecode)
     tx_hash  = contract.constructor(*constructor_args).transact({"from": deployer})
     receipt  = w3.eth.wait_for_transaction_receipt(tx_hash)
-    assert receipt.status == 1, f"Deploy failed: {contract_name}"
+    assert receipt.status == 1, "Deploy failed"
     return w3.eth.contract(address=receipt.contractAddress, abi=abi)
 
 
@@ -112,15 +112,21 @@ def run():
     # -------------------------------------------------------------------------
     print("\n[1] Deploying contracts...")
 
-    agent_art  = _load("AgentRegistry")
-    intent_art = _load("IntentRegistry")
-    deleg_art  = _load("DelegationRegistry")
-    gate_art   = _load("ExecutionGate")
+    agent_art      = _load("AgentRegistry")
+    intent_art     = _load("IntentRegistry")
+    deleg_art      = _load("DelegationRegistry")
+    gate_art       = _load("ExecutionGate")
+    mock_erc20_art = _load("MockERC20")
+    mock_router_art = _load("MockSwapRouter")
 
-    agent_reg  = _deploy(w3, agent_art, deployer)
-    intent_reg = _deploy(w3, intent_art, deployer)
-    deleg_reg  = _deploy(w3, deleg_art, deployer, intent_reg.address, agent_reg.address)
-    exec_gate  = _deploy(w3, gate_art, deployer, intent_reg.address, deleg_reg.address)
+    agent_reg   = _deploy(w3, agent_art, deployer)
+    intent_reg  = _deploy(w3, intent_art, deployer)
+    deleg_reg   = _deploy(w3, deleg_art, deployer, intent_reg.address, agent_reg.address)
+    mock_token  = _deploy(w3, mock_erc20_art, deployer)
+    mock_router = _deploy(w3, mock_router_art, deployer)
+    exec_gate   = _deploy(w3, gate_art, deployer, intent_reg.address, deleg_reg.address, mock_router.address)
+
+    TOKEN_IN = mock_token.address
 
     # Wire up execution gate
     tx = deleg_reg.functions.setExecutionGate(exec_gate.address).transact({"from": deployer})
@@ -129,6 +135,8 @@ def run():
     print(f"  AgentRegistry:      {agent_reg.address}")
     print(f"  IntentRegistry:     {intent_reg.address}")
     print(f"  DelegationRegistry: {deleg_reg.address}")
+    print(f"  MockERC20 (tokenIn):{mock_token.address}")
+    print(f"  MockSwapRouter:     {mock_router.address}")
     print(f"  ExecutionGate:      {exec_gate.address}")
 
     # -------------------------------------------------------------------------
@@ -146,7 +154,7 @@ def run():
         print(f"  Registered {name}: {addr}")
 
     # -------------------------------------------------------------------------
-    # Build and sign intent  (500 USDC, Uniswap-V3, 60 min)
+    # Build and sign intent  (500 USDC-equivalent, Uniswap-V3, 60 min)
     # -------------------------------------------------------------------------
     print("\n[3] Building and signing intent...")
 
@@ -269,18 +277,44 @@ def run():
     # -------------------------------------------------------------------------
     print("\n[7] Verifying chain...")
 
+    amount_in = 250 * 10**6   # 250 USDC (<= all scopes)
     tx_params = (
-        250 * 10**6,          # amountIn: 250 USDC (<= all scopes)
+        amount_in,
         495 * 10**6,          # minAmountOut (>= all scopes)
         protocol_id,
         Web3.to_checksum_address(TOKEN_IN),
         Web3.to_checksum_address(TOKEN_OUT),
-        execution_addr,
+        execution_addr,       # recipient — also the tx sender
     )
 
     ok = exec_gate.functions.verifyChain(_b32(delegation_id_2), tx_params).call()
     assert ok, "verifyChain returned False"
     print("  verifyChain → True  ✓")
+
+    # -------------------------------------------------------------------------
+    # Mint tokenIn to execution_addr (recipient) and approve ExecutionGate
+    # -------------------------------------------------------------------------
+    print("\n[7b] Setting up token approval for executeSwap...")
+
+    # Mint enough tokenIn to the recipient (execution_addr acts as both caller
+    # and recipient in this integration test).
+    tx = mock_token.functions.mint(execution_addr, amount_in * 2).transact({"from": deployer})
+    w3.eth.wait_for_transaction_receipt(tx)
+
+    # execution_addr approves ExecutionGate to pull its tokenIn.
+    tx_hash = w3.eth.send_raw_transaction(
+        Account.from_key(execution_key).sign_transaction(
+            mock_token.functions.approve(exec_gate.address, amount_in * 2).build_transaction({
+                "from":    execution_addr,
+                "nonce":   w3.eth.get_transaction_count(execution_addr),
+                "chainId": CHAIN_ID,
+                "gas":     100_000,
+            })
+        ).raw_transaction
+    )
+    w3.eth.wait_for_transaction_receipt(tx_hash)
+    print(f"  Minted {amount_in} tokenIn to {execution_addr}")
+    print(f"  Approved ExecutionGate ({exec_gate.address}) to spend tokenIn  ✓")
 
     # -------------------------------------------------------------------------
     # Execute swap

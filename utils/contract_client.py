@@ -26,6 +26,31 @@ from config.config import (
     ENS_PUBLIC_RESOLVER_ABI,
 )
 
+# Minimal ERC20 ABI — only the functions needed for approve/allowance checks.
+_ERC20_ABI = [
+    {
+        "inputs": [{"name": "owner", "type": "address"}, {"name": "spender", "type": "address"}],
+        "name": "allowance",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [{"name": "spender", "type": "address"}, {"name": "amount", "type": "uint256"}],
+        "name": "approve",
+        "outputs": [{"name": "", "type": "bool"}],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
+    {
+        "inputs": [{"name": "account", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+]
+
 
 def _strip(hex_str: str) -> str:
     return hex_str[2:] if hex_str.startswith("0x") else hex_str
@@ -209,6 +234,36 @@ class ContractClient:
                 label_hash = Web3.keccak(text=label)
                 node = Web3.keccak(node + label_hash)
         return node
+
+    def ensure_token_approval(self, token_address: str, spender: str, amount: int) -> None:
+        """Approve `spender` to spend `amount` of `token_address` on behalf of this account.
+
+        Checks the current allowance first and only sends an approval tx if it is
+        insufficient, avoiding unnecessary gas spend.
+        """
+        token = self.w3.eth.contract(
+            address=Web3.to_checksum_address(token_address),
+            abi=_ERC20_ABI,
+        )
+        current = token.functions.allowance(
+            self.account.address,
+            Web3.to_checksum_address(spender),
+        ).call()
+        if current < amount:
+            self._send_tx_receipt(
+                token.functions.approve(
+                    Web3.to_checksum_address(spender),
+                    amount,
+                )
+            )
+
+    def token_balance(self, token_address: str, account: str) -> int:
+        """Return the ERC20 balance of `account` for the given token."""
+        token = self.w3.eth.contract(
+            address=Web3.to_checksum_address(token_address),
+            abi=_ERC20_ABI,
+        )
+        return token.functions.balanceOf(Web3.to_checksum_address(account)).call()
 
     def delegate_from_root(
         self, root_intent_id: str, child_scope: dict, delegate_to: str

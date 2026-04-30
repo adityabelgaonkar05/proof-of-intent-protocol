@@ -6,21 +6,26 @@ import "../src/IntentRegistry.sol";
 import "../src/AgentRegistry.sol";
 import "../src/DelegationRegistry.sol";
 import "../src/ExecutionGate.sol";
+import "./mocks/MockERC20.sol";
+import "./mocks/MockSwapRouter.sol";
 
 bytes32 constant UNISWAP_V3 = keccak256(abi.encodePacked("Uniswap-V3"));
 bytes32 constant CURVE       = keccak256(abi.encodePacked("Curve"));
 
 contract ExecutionGateTest is Test {
-    IntentRegistry public intentRegistry;
-    AgentRegistry public agentRegistry;
+    IntentRegistry     public intentRegistry;
+    AgentRegistry      public agentRegistry;
     DelegationRegistry public delegationRegistry;
-    ExecutionGate public executionGate;
+    ExecutionGate      public executionGate;
+    MockERC20          public mockTokenIn;
+    MockSwapRouter     public mockRouter;
 
     uint256 internal ownerKey = 0xA11CE;
     address internal owner;
     address internal agent;
 
-    address internal constant TOKEN_IN  = address(0x1234);
+    // TOKEN_IN is set in setUp to the deployed MockERC20 address.
+    address internal TOKEN_IN;
     address internal constant TOKEN_OUT = address(0x5678);
     // address(0xC0FFEE) is the authorizedOrchestrator embedded in all intents
     address internal constant ORCHESTRATOR = address(0xC0FFEE);
@@ -33,7 +38,14 @@ contract ExecutionGateTest is Test {
         intentRegistry     = new IntentRegistry();
         agentRegistry      = new AgentRegistry();
         delegationRegistry = new DelegationRegistry(address(intentRegistry), address(agentRegistry));
-        executionGate      = new ExecutionGate(address(intentRegistry), address(delegationRegistry));
+        mockTokenIn        = new MockERC20();
+        mockRouter         = new MockSwapRouter();
+        TOKEN_IN           = address(mockTokenIn);
+        executionGate      = new ExecutionGate(
+            address(intentRegistry),
+            address(delegationRegistry),
+            address(mockRouter)
+        );
         delegationRegistry.setExecutionGate(address(executionGate));
 
         owner    = vm.addr(ownerKey);
@@ -66,6 +78,11 @@ contract ExecutionGateTest is Test {
         });
         vm.prank(ORCHESTRATOR);
         delegationId = delegationRegistry.delegateFromRoot(intentId, scope, agent);
+
+        // Give agent enough tokenIn and approve ExecutionGate so executeSwap tests work.
+        mockTokenIn.mint(agent, 10 ether);
+        vm.prank(agent);
+        mockTokenIn.approve(address(executionGate), type(uint256).max);
     }
 
     // -------------------------------------------------------------------------
@@ -320,6 +337,11 @@ contract ExecutionGateTest is Test {
         address subAgent = makeAddr("subAgent");
         agentRegistry.registerAgent(subAgent, "subAgent");
 
+        // Give subAgent tokens and approval so it can be the swap recipient.
+        mockTokenIn.mint(subAgent, 10 ether);
+        vm.prank(subAgent);
+        mockTokenIn.approve(address(executionGate), type(uint256).max);
+
         bytes32[] memory protocols = new bytes32[](1);
         protocols[0] = protocol;
 
@@ -351,8 +373,9 @@ contract ExecutionGateTest is Test {
     // -------------------------------------------------------------------------
 
     function test_Constructor_SetsAddresses() public view {
-        assertEq(executionGate.intentRegistry(),    address(intentRegistry));
+        assertEq(executionGate.intentRegistry(),     address(intentRegistry));
         assertEq(executionGate.delegationRegistry(), address(delegationRegistry));
         assertEq(executionGate.owner(),              address(this));
+        assertEq(address(executionGate.UNISWAP_ROUTER()), address(mockRouter));
     }
 }

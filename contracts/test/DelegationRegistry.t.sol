@@ -31,7 +31,7 @@ contract DelegationRegistryTest is Test {
         intentRegistry    = new IntentRegistry();
         agentRegistry     = new AgentRegistry();
         delegationRegistry = new DelegationRegistry(address(intentRegistry), address(agentRegistry));
-        executionGate     = new ExecutionGate(address(intentRegistry), address(delegationRegistry));
+        executionGate     = new ExecutionGate(address(intentRegistry), address(delegationRegistry), address(1));
         delegationRegistry.setExecutionGate(address(executionGate));
 
         owner    = vm.addr(ownerKey);
