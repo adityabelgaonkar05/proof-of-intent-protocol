@@ -93,15 +93,13 @@ Agent messages flow over AXL (Yggdrasil-routed, ed25519-authenticated):
 
 | Contract              | Address                                    | Etherscan |
 |-----------------------|--------------------------------------------|-----------|
-| `AgentRegistry`       | `0x42A37c74512d678A62188D9C033FCe49C02F4111` | [view](https://sepolia.etherscan.io/address/0x42A37c74512d678A62188D9C033FCe49C02F4111) |
-| `IntentRegistry`      | `0xBaAb83d5C2Ef13ac523CEc8989F514F0c4d31A47` | [view](https://sepolia.etherscan.io/address/0xBaAb83d5C2Ef13ac523CEc8989F514F0c4d31A47) |
-| `DelegationRegistry`  | `0x89c9451A0D7f019A119C5C0Be1468E7365059D54` | [view](https://sepolia.etherscan.io/address/0x89c9451A0D7f019A119C5C0Be1468E7365059D54) |
-| `ExecutionGate`       | `0x98d9ccA9b5F8abACB4c8BEC833C4ed206DC77954` | [view](https://sepolia.etherscan.io/address/0x98d9ccA9b5F8abACB4c8BEC833C4ed206DC77954) |
+| `AgentRegistry`       | `0xcD5954121BbE13a4867c2Df886e24E924D006883` | [view](https://sepolia.etherscan.io/address/0xcD5954121BbE13a4867c2Df886e24E924D006883) |
+| `IntentRegistry`      | `0xf2a52EAf8E2440F9aFa28aDA5426Bc2908DDc5b4` | [view](https://sepolia.etherscan.io/address/0xf2a52EAf8E2440F9aFa28aDA5426Bc2908DDc5b4) |
+| `DelegationRegistry`  | `0x51bF1E9C33ACF135E7C6ca83AD4Cf36d5B8BBa45` | [view](https://sepolia.etherscan.io/address/0x51bF1E9C33ACF135E7C6ca83AD4Cf36d5B8BBa45) |
+| `ExecutionGate`       | `0x076e8cd66be8B927CcB9adA63505e8027b209cb6` | [view](https://sepolia.etherscan.io/address/0x076e8cd66be8B927CcB9adA63505e8027b209cb6) |
 
-> **Note:** The on-chain `ExecutionGate` predates the Uniswap V3 integration and does not
-> include the router call. Run `./deploy.sh` to redeploy with the updated constructor
-> (see [Deploying](#deploying)). The other three contracts are unaffected and do not need
-> to be redeployed.
+> All four contracts were redeployed together. `ExecutionGate` includes the Uniswap V3
+> SwapRouter02 address in its constructor and performs real swaps.
 
 Tokens used in the demo (Ethereum Sepolia):
 
@@ -266,9 +264,12 @@ The full pipeline runs three Python agents that communicate over AXL — a local
 
 ### 1. Build the AXL binary
 
+The binary must live at `vendor/axl/node` — that is the path `agents/axl_test.py` and the
+agent startup commands below expect.
+
 ```bash
 cd vendor/axl
-go build -o ../../axl-node ./cmd/node/
+go build -o node ./cmd/node/
 cd ../..
 ```
 
@@ -278,13 +279,13 @@ Each node reads a config file from `agents/axl_configs/`. Start them from the **
 
 ```bash
 # Terminal 1 — orchestrator node (bootstrap peer, listens on :9001)
-./axl-node -config agents/axl_configs/orchestrator.json &
+./vendor/axl/node -config agents/axl_configs/orchestrator.json &
 
 # Terminal 2 — research agent node (connects to orchestrator)
-./axl-node -config agents/axl_configs/research.json &
+./vendor/axl/node -config agents/axl_configs/research.json &
 
 # Terminal 3 — execution agent node (connects to orchestrator)
-./axl-node -config agents/axl_configs/execution.json &
+./vendor/axl/node -config agents/axl_configs/execution.json &
 ```
 
 Node HTTP APIs are available at:
@@ -373,7 +374,7 @@ cp .env.example .env
 To set a specific Uniswap router address (defaults to Sepolia SwapRouter02):
 
 ```bash
-UNISWAP_ROUTER_ADDRESS=0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48 ./deploy.sh
+UNISWAP_ROUTER_ADDRESS=0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E ./deploy.sh
 ```
 
 ---
@@ -471,7 +472,7 @@ Expected terminal output for Scenario 2:
 ### Uniswap V3
 
 `ExecutionGate` calls `ISwapRouter.exactInputSingle` on SwapRouter02
-(`0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48` on Sepolia) at the moment of execution.
+(`0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E` on Sepolia) at the moment of execution.
 This is not a wrapper or a simulation — it is the actual DeFi swap that delivers WETH to the
 user's wallet. The integration uses the 0.3% fee tier for USDC/WETH, no price limit
 (`sqrtPriceLimitX96 = 0`), and relies entirely on `amountOutMinimum` (the `minAmountOut`

@@ -133,6 +133,8 @@ try:
            "protocol":UNI, "tokenIn":USDC_ADDRESS, "tokenOut":WETH_ADDRESS, "recipient":USER_ADDR}
     chain_ok = ex.verify_chain(d2, txp)
     print(f"  verify_chain: {chain_ok}")
+    user.ensure_token_approval(USDC_ADDRESS, EXECUTION_GATE_ADDRESS, txp["amountIn"])
+    print(f"  USDC approval confirmed for {txp['amountIn']} units")
     tx = ex.execute_swap(d2, txp)
     print(f"  swap tx: 0x{tx}")
     print(f"  https://sepolia.etherscan.io/tx/0x{tx}")

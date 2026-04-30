@@ -5,7 +5,7 @@ import "./IntentRegistry.sol";
 import "./DelegationRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// Matches SwapRouter02 (0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48 on Sepolia).
+// Matches SwapRouter02 (0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E on Sepolia).
 // No deadline field — SwapRouter02 removed it vs SwapRouter01.
 interface ISwapRouter {
     struct ExactInputSingleParams {

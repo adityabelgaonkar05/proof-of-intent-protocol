@@ -43,7 +43,7 @@ USER_ADDRESS: str            = _Account.from_key(USER_PRIVATE_KEY).address
 # Token addresses on Ethereum Sepolia
 USDC_ADDRESS: str = os.getenv("USDC_ADDRESS", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
 WETH_ADDRESS: str = os.getenv("WETH_ADDRESS", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14")
-UNISWAP_ROUTER_ADDRESS: str = os.getenv("UNISWAP_ROUTER_ADDRESS", "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48")
+UNISWAP_ROUTER_ADDRESS: str = os.getenv("UNISWAP_ROUTER_ADDRESS", "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E")
 
 # ---------------------------------------------------------------------------
 # Deployed contract addresses
@@ -87,6 +87,9 @@ ZG_INDEXER_URL: str = os.getenv("ZG_INDEXER_URL", "https://indexer-storage-testn
 
 from web3 import Web3  # noqa: E402
 
+# KNOWN_PROTOCOLS is the single source of truth for protocol ID constants.
+# utils/protocol_ids.py was removed — use KNOWN_PROTOCOLS or compute inline via
+# Web3.keccak(text="<ProtocolName>") for one-off use.
 KNOWN_PROTOCOLS: dict[str, str] = {
     name: Web3.keccak(text=name).hex()
     for name in ["Uniswap-V3", "Curve", "Balancer-V2", "Aave-V3", "1inch"]

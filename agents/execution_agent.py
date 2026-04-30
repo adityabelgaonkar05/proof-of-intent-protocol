@@ -12,6 +12,7 @@ import json
 import config.config as config
 from utils.contract_client import ContractClient
 from utils import axl_client
+from config.config import USDC_ADDRESS, EXECUTION_GATE_ADDRESS
 
 
 def run(execution_private_key: str) -> None:
@@ -37,7 +38,22 @@ def run(execution_private_key: str) -> None:
         )
         return
 
-    # Step 3: Execute
+    # Step 3: Ensure the recipient has approved ExecutionGate to pull tokenIn.
+    # The recipient address comes from txParams; for USDC swaps this is the user wallet.
+    amount_in = message["txParams"]["amountIn"]
+    try:
+        client.ensure_token_approval(USDC_ADDRESS, EXECUTION_GATE_ADDRESS, amount_in)
+        print(f"Token approval confirmed for {amount_in} units")
+    except Exception as e:
+        print(f"Token approval failed — {e}")
+        axl_client.send_message(
+            config.ORCHESTRATOR_AXL_KEY,
+            {"type": "FAILED", "reason": f"approval failed: {e}"},
+            port=config.EXECUTION_AXL_PORT,
+        )
+        return
+
+    # Step 4: Execute
     print("Executing swap via ExecutionGate...")
     try:
         tx_hash = client.execute_swap(message["delegationId"], message["txParams"])

@@ -15,7 +15,7 @@ contract Deploy is Script {
         AgentRegistry agentRegistry         = new AgentRegistry();
         IntentRegistry intentRegistry       = new IntentRegistry();
         DelegationRegistry delegationRegistry = new DelegationRegistry(address(intentRegistry), address(agentRegistry));
-        address uniswapRouter = vm.envOr("UNISWAP_ROUTER_ADDRESS", address(0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48));
+        address uniswapRouter = vm.envOr("UNISWAP_ROUTER_ADDRESS", address(0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E));
         ExecutionGate executionGate         = new ExecutionGate(address(intentRegistry), address(delegationRegistry), uniswapRouter);
 
         delegationRegistry.setExecutionGate(address(executionGate));
