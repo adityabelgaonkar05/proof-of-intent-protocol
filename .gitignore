@@ -14,3 +14,7 @@ build/
 
 # OS
 .DS_Store
+
+# AXL build + private identity keys
+vendor/
+agents/keys/

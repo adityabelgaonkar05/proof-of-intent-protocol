@@ -60,3 +60,17 @@ KNOWN_PROTOCOLS: dict[str, str] = {
     name: Web3.keccak(text=name).hex()
     for name in ["Uniswap-V3", "Curve", "Balancer-V2", "Aave-V3", "1inch"]
 }
+
+# ---------------------------------------------------------------------------
+# AXL agent public keys (ed25519, hex). Captured from each node's
+# /topology endpoint; the matching private keys live in agents/keys/.
+# ---------------------------------------------------------------------------
+
+ORCHESTRATOR_AXL_KEY = "f2395885c7d3f024bcf269e88cac9a072a977016365ae260118782c19240760b"
+RESEARCH_AXL_KEY     = "7ab38976ea6550c626fc28382dd133c255054c5fe19ea4450ad0103771438a91"
+EXECUTION_AXL_KEY    = "1f63933d14bf26298b076c1f69f25e323fc167b7133c233c6fb58f3410c29515"
+
+# Local HTTP API ports for each node (see agents/axl_configs/*.json)
+ORCHESTRATOR_AXL_PORT = 9002
+RESEARCH_AXL_PORT     = 9012
+EXECUTION_AXL_PORT    = 9022

@@ -1,0 +1,13 @@
+[node] Loaded node config from /Users/adityabelgaonkar/repos/proof-of-intent-protocol/agents/axl_configs/research.json
+[node] Max message size: 16777216 bytes
+[node] Max concurrent connections: 128
+[node] Connection read timeout: 1m0s
+[node] Connection idle timeout: 5m0s
+[node] Configured peer: tls://127.0.0.1:9001
+[node] Gensyn Node Started!
+[node] Our IPv6: 201:1531:da24:566a:bce7:640f:5f1f:48bb
+[node] Our Public Key: 7ab38976ea6550c626fc28382dd133c255054c5fe19ea4450ad0103771438a91
+Listening on 127.0.0.1:9012
+TCP Listener started on port 7000
+[node] Connected outbound: 200:1b8d:4ef4:7058:1fb6:861b:2c2e:e6a6@127.0.0.1:9001, source 127.0.0.1:59251
+2026/04/30 12:21:40 Connection from peer f2395885c7d3f024...

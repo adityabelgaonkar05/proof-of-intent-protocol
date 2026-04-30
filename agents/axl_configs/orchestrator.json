@@ -1,0 +1,8 @@
+{
+  "PrivateKeyPath": "agents/keys/orchestrator.key",
+  "Peers": [],
+  "Listen": ["tls://127.0.0.1:9001"],
+  "api_port": 9002,
+  "bridge_addr": "127.0.0.1",
+  "tcp_port": 7000
+}
