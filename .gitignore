@@ -20,3 +20,7 @@ vendor/
 agents/keys/
 
 node_modules/
+
+# Landing page
+landing/node_modules/
+landing/dist/
