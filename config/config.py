@@ -23,6 +23,24 @@ USER_PRIVATE_KEY = _require("USER_PRIVATE_KEY")
 CHAIN_ID = 84532  # Base Sepolia
 
 # ---------------------------------------------------------------------------
+# Agent Ethereum wallet addresses
+# ---------------------------------------------------------------------------
+
+RESEARCH_PRIVATE_KEY: str   = _require("RESEARCH_PRIVATE_KEY")
+EXECUTION_PRIVATE_KEY: str  = _require("EXECUTION_PRIVATE_KEY")
+
+from eth_account import Account as _Account  # noqa: E402
+
+ORCHESTRATOR_ADDRESS: str    = _Account.from_key(DEPLOYER_PRIVATE_KEY).address
+RESEARCH_AGENT_ADDRESS: str  = _Account.from_key(RESEARCH_PRIVATE_KEY).address
+EXECUTION_AGENT_ADDRESS: str = _Account.from_key(EXECUTION_PRIVATE_KEY).address
+USER_ADDRESS: str            = _Account.from_key(USER_PRIVATE_KEY).address
+
+# Token addresses on Base Sepolia (override via env vars for other networks)
+USDC_ADDRESS: str = os.getenv("USDC_ADDRESS", "0x036CbD53842c5426634e7929541eC2318f3dCF7e")
+WETH_ADDRESS: str = os.getenv("WETH_ADDRESS", "0x4200000000000000000000000000000000000006")
+
+# ---------------------------------------------------------------------------
 # Deployed contract addresses
 # ---------------------------------------------------------------------------
 
