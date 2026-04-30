@@ -22,6 +22,7 @@ from config.config import (
     ZG_INDEXER_URL,
     ENS_NAME,
     ENS_RESOLVER_ADDRESS,
+    ENS_REGISTRY_ADDRESS,
     ENS_PUBLIC_RESOLVER_ABI,
 )
 
@@ -170,8 +171,26 @@ class ContractClient:
 
         try:
             node = self._ens_namehash(ens_name)
+
+            # Look up the resolver the ENS registry has on file for this name.
+            # Fall back to the hardcoded default if the registry returns zero.
+            _registry = self.w3.eth.contract(
+                address=Web3.to_checksum_address(ENS_REGISTRY_ADDRESS),
+                abi=[{
+                    "inputs": [{"type": "bytes32", "name": "node"}],
+                    "name": "resolver",
+                    "outputs": [{"type": "address"}],
+                    "stateMutability": "view",
+                    "type": "function",
+                }],
+            )
+            _zero = "0x0000000000000000000000000000000000000000"
+            _resolver_addr = _registry.functions.resolver(node).call()
+            if _resolver_addr == _zero:
+                _resolver_addr = ENS_RESOLVER_ADDRESS
+
             resolver = self.w3.eth.contract(
-                address=Web3.to_checksum_address(ENS_RESOLVER_ADDRESS),
+                address=Web3.to_checksum_address(_resolver_addr),
                 abi=ENS_PUBLIC_RESOLVER_ABI,
             )
             self._send_tx_receipt(

@@ -96,7 +96,11 @@ KNOWN_PROTOCOLS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 ENS_NAME: str = os.getenv("ENS_NAME", "")
+# Fallback resolver — used only if the ENS registry returns the zero address
+# for the configured name (i.e. name registered with no explicit resolver).
+# store_intent_on_ens() looks up the live resolver from the registry first.
 ENS_RESOLVER_ADDRESS: str = "0x8FADE66B79cC9f707aB26799354482EB93a5B7dD"
+ENS_REGISTRY_ADDRESS: str = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
 
 ENS_PUBLIC_RESOLVER_ABI: list = [
     {
