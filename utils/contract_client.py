@@ -1,3 +1,6 @@
+import json
+import time
+
 from eth_account import Account
 from web3 import Web3
 from web3.contract import Contract
@@ -14,6 +17,12 @@ from config.config import (
     INTENT_REGISTRY_ABI,
     DELEGATION_REGISTRY_ABI,
     EXECUTION_GATE_ABI,
+    ZG_API_KEY,
+    ZG_RPC_URL,
+    ZG_INDEXER_URL,
+    ENS_NAME,
+    ENS_RESOLVER_ADDRESS,
+    ENS_PUBLIC_RESOLVER_ABI,
 )
 
 
@@ -79,7 +88,107 @@ class ContractClient:
         logs = self.intent_registry.events.IntentRegistered().process_receipt(receipt)
         if not logs:
             raise ValueError("IntentRegistered event not found in receipt")
-        return "0x" + logs[0]["args"]["intentId"].hex()
+        intent_id = "0x" + logs[0]["args"]["intentId"].hex()
+
+        # Non-blocking: store on 0G and ENS; failures are warnings only.
+        self.store_intent_on_0g(intent, intent_id)
+        self.store_intent_on_ens(intent_id, ENS_NAME)
+
+        return intent_id
+
+    def store_intent_on_0g(self, intent: dict, intent_id: str) -> str | None:
+        """
+        Store the intent as a JSON blob on 0G decentralised storage.
+
+        Returns the rootHash reference on success, None on any failure.
+        Failure is always non-blocking: errors are printed as warnings.
+        """
+        if not ZG_API_KEY:
+            print("0G storage skipped: 0G_API_KEY not set.")
+            return None
+
+        try:
+            from core.indexer import Indexer
+            from core.file import ZgFile
+        except ImportError:
+            print("Warning [0G]: 0g-storage-sdk not installed (pip install 0g-storage-sdk).")
+            return None
+
+        try:
+            metadata = {
+                "intentId": intent_id,
+                "owner": intent.get("owner", ""),
+                "maxAmountIn": intent.get("maxAmountIn", 0),
+                "minAmountOut": intent.get("minAmountOut", 0),
+                "allowedProtocols": [
+                    p.hex() if isinstance(p, (bytes, bytearray)) else p
+                    for p in intent.get("allowedProtocols", [])
+                ],
+                "deadline": intent.get("deadline", 0),
+                "timestamp": int(time.time()),
+            }
+            payload = json.dumps(metadata, separators=(",", ":")).encode()
+
+            zg_account = Account.from_key(ZG_API_KEY)
+            file = ZgFile.from_bytes(payload)
+            indexer = Indexer(ZG_INDEXER_URL)
+
+            upload_opts = {
+                "tags": b"\x00",
+                "finalityRequired": True,
+                "taskSize": 10,
+                "expectedReplica": 1,
+                "skipTx": False,
+                "fee": 0,
+                "account": zg_account,
+            }
+
+            result, err = indexer.upload(file, ZG_RPC_URL, zg_account, upload_opts)
+
+            if err is not None:
+                print(f"Warning [0G]: upload failed — {err}")
+                return None
+
+            ref = result.get("rootHash", "") or result.get("txHash", "")
+            print(f"Intent stored on 0G: {ref}")
+            return ref
+
+        except Exception as exc:
+            print(f"Warning [0G]: {exc}")
+            return None
+
+    def store_intent_on_ens(self, intent_id: str, ens_name: str) -> None:
+        """
+        Write intent_id as the "active-intent" text record on the ENS name.
+
+        Non-blocking: prints a warning on any failure.
+        Skipped silently when ENS_NAME is not configured.
+        """
+        if not ens_name:
+            return
+
+        try:
+            node = self._ens_namehash(ens_name)
+            resolver = self.w3.eth.contract(
+                address=Web3.to_checksum_address(ENS_RESOLVER_ADDRESS),
+                abi=ENS_PUBLIC_RESOLVER_ABI,
+            )
+            self._send_tx_receipt(
+                resolver.functions.setText(node, "active-intent", intent_id)
+            )
+            print(f"Intent linked to {ens_name} on ENS")
+        except Exception as exc:
+            print(f"Warning [ENS]: {exc}")
+
+    @staticmethod
+    def _ens_namehash(name: str) -> bytes:
+        """Compute the ENS namehash (EIP-137) for a domain name."""
+        node = b"\x00" * 32
+        if name:
+            for label in reversed(name.split(".")):
+                label_hash = Web3.keccak(text=label)
+                node = Web3.keccak(node + label_hash)
+        return node
 
     def delegate_from_root(
         self, root_intent_id: str, child_scope: dict, delegate_to: str

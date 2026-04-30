@@ -73,6 +73,14 @@ DELEGATION_REGISTRY_ABI = _load_abi("DelegationRegistry")
 EXECUTION_GATE_ABI = _load_abi("ExecutionGate")
 
 # ---------------------------------------------------------------------------
+# 0G Network — decentralised storage for intent NFTs
+# ---------------------------------------------------------------------------
+
+ZG_API_KEY: str = os.getenv("0G_API_KEY", "").strip()
+ZG_RPC_URL: str = os.getenv("0G_RPC_URL", "https://evmrpc-testnet.0g.ai")
+ZG_INDEXER_URL: str = os.getenv("0G_INDEXER_URL", "https://indexer-storage-testnet-turbo.0g.ai")
+
+# ---------------------------------------------------------------------------
 # Protocol identifiers (keccak256 of protocol name)
 # ---------------------------------------------------------------------------
 
@@ -82,6 +90,37 @@ KNOWN_PROTOCOLS: dict[str, str] = {
     name: Web3.keccak(text=name).hex()
     for name in ["Uniswap-V3", "Curve", "Balancer-V2", "Aave-V3", "1inch"]
 }
+
+# ---------------------------------------------------------------------------
+# ENS text-record storage
+# ---------------------------------------------------------------------------
+
+ENS_NAME: str = os.getenv("ENS_NAME", "")
+ENS_RESOLVER_ADDRESS: str = "0x8FADE66B79cC9f707aB26799354482EB93a5B7dD"
+
+ENS_PUBLIC_RESOLVER_ABI: list = [
+    {
+        "inputs": [
+            {"internalType": "bytes32", "name": "node", "type": "bytes32"},
+            {"internalType": "string",  "name": "key",  "type": "string"},
+            {"internalType": "string",  "name": "value","type": "string"},
+        ],
+        "name": "setText",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
+    {
+        "inputs": [
+            {"internalType": "bytes32", "name": "node", "type": "bytes32"},
+            {"internalType": "string",  "name": "key",  "type": "string"},
+        ],
+        "name": "text",
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+]
 
 # ---------------------------------------------------------------------------
 # AXL agent public keys (ed25519, hex). Captured from each node's
