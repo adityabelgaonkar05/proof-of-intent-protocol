@@ -1,100 +1,89 @@
-"""
-Compiler agent — converts a natural-language swap request into a validated
-Intent struct dict ready to be signed and registered on-chain.
-
-Claude is used to parse the user's request and fill in any gaps with safe
-defaults.  The output is deterministic enough that downstream agents can rely
-on it without re-parsing.
-"""
-
 import json
-import time
-from typing import Any
 
 import anthropic
 
-from config.config import CLAUDE_API_KEY, KNOWN_PROTOCOLS
+from config.config import CLAUDE_API_KEY
 
 _client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
 
-_SYSTEM = """
-You are an intent compiler for a DeFi protocol running on Base Sepolia testnet.
-Your job is to parse a user's natural-language swap request and return a JSON
-object with the following fields:
+SYSTEM_PROMPT = """
+You are an intent compiler for a DeFi transaction system.
+Convert natural language instructions into a structured JSON intent object.
+You must return ONLY valid JSON. No explanation. No markdown. No code blocks.
+Be conservative: if an amount is ambiguous, use the lower bound.
+If a protocol is not explicitly named, do not include it.
 
+Output this exact schema:
 {
-  "tokenIn":        "<ERC-20 address or well-known symbol>",
-  "maxAmountIn":    <integer, amount in wei>,
-  "minAmountOut":   <integer, minimum acceptable out amount in wei>,
-  "allowedProtocols": ["<protocol name 1>", ...],   // subset of the known list
-  "deadlineMinutes": <integer, minutes from now>
+  "tokenIn": "<ERC20 token symbol>",
+  "tokenInAddress": "<checksummed address or null if unknown>",
+  "maxAmountIn": <integer, in token units with decimals. USDC has 6 decimals so 500 USDC = 500000000>,
+  "minAmountOut": <integer, minimum acceptable output in output token units>,
+  "allowedProtocols": ["<protocol name>"],
+  "deadlineMinutes": <integer, minutes from now>,
+  "reasoning": "<one sentence explaining your interpretation>"
 }
 
-Rules:
-- If the user specifies a token by symbol (USDC, ETH, WETH, etc.) return
-  the symbol as-is; the caller will resolve the address.
-- If minAmountOut is not specified, default to 97% of maxAmountIn (i.e.
-  maxAmountIn * 0.97, expressed in the same units).
-- If no protocols are mentioned, include all known protocols.
-- If no deadline is mentioned, default to 30 minutes.
-- Known protocols: uniswap-v3, curve, balancer-v2, aave-v3, 1inch
-- Respond ONLY with the JSON object — no explanation, no markdown.
-""".strip()
-
-# Testnet token addresses (Base Sepolia)
-_TOKEN_ADDRESSES: dict[str, str] = {
-    "ETH":  "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-    "WETH": "0x4200000000000000000000000000000000000006",
-    "USDC": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-    "DAI":  "0x7683022d84f726a96c4a6611cd31dbf5409c0ac9",
-}
+If you cannot parse the instruction into this schema, return:
+{"error": "Cannot parse: <reason>"}
+"""
 
 
-def compile_intent(user_request: str, owner_address: str, current_nonce: int) -> dict[str, Any]:
-    """
-    Parse user_request and return a fully-populated intent dict.
-    owner_address and current_nonce are injected by the caller.
-    Raises ValueError if Claude cannot parse the request.
-    """
+def compile_intent(natural_language: str) -> dict:
     response = _client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=512,
-        system=_SYSTEM,
-        messages=[{"role": "user", "content": user_request}],
+        model="claude-sonnet-4-20250514",
+        max_tokens=500,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": natural_language}],
     )
 
     raw = response.content[0].text.strip()
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Compiler agent returned invalid JSON: {raw!r}") from exc
+        raise ValueError(f"Model returned invalid JSON: {raw!r}") from exc
 
-    # Resolve token symbol → address
-    token_in = parsed["tokenIn"]
-    if not token_in.startswith("0x"):
-        token_in = _TOKEN_ADDRESSES.get(token_in.upper(), token_in)
+    if "error" in parsed:
+        raise ValueError(parsed["error"])
 
-    # Map protocol names → keccak256 hex identifiers
-    protocol_names: list[str] = parsed.get("allowedProtocols", list(KNOWN_PROTOCOLS.keys()))
-    allowed_protocols = [
-        KNOWN_PROTOCOLS[name]
-        for name in protocol_names
-        if name in KNOWN_PROTOCOLS
-    ]
-    if not allowed_protocols:
-        allowed_protocols = list(KNOWN_PROTOCOLS.values())
+    return parsed
 
-    max_amount_in: int = int(parsed["maxAmountIn"])
-    min_amount_out: int = int(parsed.get("minAmountOut", max_amount_in * 97 // 100))
-    deadline_minutes: int = int(parsed.get("deadlineMinutes", 30))
-    deadline: int = int(time.time()) + deadline_minutes * 60
 
-    return {
-        "owner": owner_address,
-        "tokenIn": token_in,
-        "maxAmountIn": max_amount_in,
-        "minAmountOut": min_amount_out,
-        "allowedProtocols": allowed_protocols,
-        "deadline": deadline,
-        "nonce": current_nonce,
-    }
+def display_intent(compiled: dict) -> None:
+    print("\n--- Compiled Intent ---")
+    print(f"  Token In:          {compiled.get('tokenIn', 'N/A')}")
+    print(f"  Token In Address:  {compiled.get('tokenInAddress', 'N/A')}")
+    print(f"  Max Amount In:     {compiled.get('maxAmountIn', 'N/A')}")
+    print(f"  Min Amount Out:    {compiled.get('minAmountOut', 'N/A')}")
+    print(f"  Allowed Protocols: {', '.join(compiled.get('allowedProtocols', []))}")
+    print(f"  Deadline:          {compiled.get('deadlineMinutes', 'N/A')} minutes from now")
+    print(f"  Reasoning:         {compiled.get('reasoning', 'N/A')}")
+    print("-----------------------")
+    print("PLEASE REVIEW THE ABOVE BEFORE SIGNING")
+
+
+def interactive_compile() -> dict:
+    print("Enter your intent in plain English:")
+    natural_language = input("> ").strip()
+
+    try:
+        compiled = compile_intent(natural_language)
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        print("Let's try again.")
+        return interactive_compile()
+
+    display_intent(compiled)
+
+    print("Does this match your intent? (yes/no):")
+    answer = input("> ").strip().lower()
+
+    if answer == "yes":
+        return compiled
+
+    print("Let's try again.")
+    return interactive_compile()
+
+
+if __name__ == "__main__":
+    interactive_compile()
