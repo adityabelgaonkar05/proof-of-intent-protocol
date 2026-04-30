@@ -244,7 +244,7 @@ function HowItWorks() {
 
           <div className="hiw-card">
             <div className="hiw-card__num">03 / ENFORCE</div>
-            <span className="hiw-card__glyph">⬛</span>
+            <span className="hiw-card__glyph">✦</span>
             <h3 className="hiw-card__title">ENFORCE</h3>
             <p className="hiw-card__desc">
               ExecutionGate walks the full delegation chain before any token
@@ -843,6 +843,12 @@ function Footer() {
           <div className="footer__stack">
             EIP-712 · Foundry · ethers v6 · Uniswap V3 · Ethereum Sepolia
           </div>
+        </div>
+        <div className="footer__credit">
+          Made by{' '}
+          <a href="https://github.com/adityabelgaonkar05" target="_blank" rel="noopener noreferrer">adityabelgaonkar05</a>
+          {' '}and{' '}
+          <a href="https://github.com/akankshaagroya" target="_blank" rel="noopener noreferrer">akankshaagroya</a>
         </div>
       </div>
     </footer>
