@@ -4,6 +4,7 @@ import time
 from eth_account import Account
 from web3 import Web3
 from web3.contract import Contract
+from web3.exceptions import ContractLogicError
 from web3.types import TxReceipt
 
 from config.config import (
@@ -62,6 +63,24 @@ def _b32(value) -> bytes:
     return bytes.fromhex(_strip(value))
 
 
+def _extract_revert_reason(exc: Exception) -> str:
+    message = str(exc)
+    if "execution reverted:" in message:
+        reason = message.split("execution reverted:", 1)[1].strip()
+        for suffix in ("', '", '", "', "')", '")', "',)", '",)'):
+            if suffix in reason:
+                reason = reason.split(suffix, 1)[0]
+                break
+        return reason.strip(" '\"")
+    return message
+
+
+class TransactionRevertError(Exception):
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
 class ContractClient:
     def __init__(self, private_key: str):
         self.w3 = Web3(Web3.HTTPProvider(RPC_URL))
@@ -86,7 +105,10 @@ class ContractClient:
         )
 
     def _send_tx_receipt(self, contract_function) -> TxReceipt:
-        gas = contract_function.estimate_gas({"from": self.account.address})
+        try:
+            gas = contract_function.estimate_gas({"from": self.account.address})
+        except ContractLogicError as exc:
+            raise TransactionRevertError(_extract_revert_reason(exc)) from exc
         tx = contract_function.build_transaction({
             "from": self.account.address,
             "nonce": self.w3.eth.get_transaction_count(self.account.address),
@@ -94,10 +116,13 @@ class ContractClient:
             "gas": gas,
         })
         signed = self.account.sign_transaction(tx)
-        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+        try:
+            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+        except ContractLogicError as exc:
+            raise TransactionRevertError(_extract_revert_reason(exc)) from exc
         if receipt.status == 0:
-            raise Exception("Transaction reverted")
+            raise TransactionRevertError("Transaction reverted")
         return receipt
 
     def send_tx(self, contract_function) -> str:

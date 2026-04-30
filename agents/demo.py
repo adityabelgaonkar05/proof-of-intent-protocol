@@ -35,7 +35,7 @@ from config.config import (
     UNISWAP_ROUTER_ADDRESS,
 )
 from utils.sign_intent import build_intent, sign_intent
-from utils.contract_client import ContractClient
+from utils.contract_client import ContractClient, TransactionRevertError
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -70,6 +70,8 @@ def print_header(text: str) -> None:
 
 
 def _revert_reason(exc: Exception) -> str:
+    if isinstance(exc, TransactionRevertError):
+        return exc.reason
     msg = str(exc)
     # Web3.py wraps revert reasons as: "execution reverted: <reason>"
     if "execution reverted:" in msg:
@@ -208,9 +210,24 @@ def run_demo() -> None:
     user_client.ensure_token_approval(USDC_ADDRESS, EXECUTION_GATE_ADDRESS, _RESEARCH_MAX_USDC)
     print("  Approval confirmed.")
 
-    tx_hash = exec_client.execute_swap(delegation_id_2, tx_params)
+    swap_executed = False
+    tx_hex = None
 
-    tx_hex = tx_hash if tx_hash.startswith("0x") else "0x" + tx_hash
+    if usdc_before < _RESEARCH_MAX_USDC:
+        print("  Swap not submitted.")
+        print(
+            f"  Funding required: wallet holds {usdc_before / 1e6:.6f} USDC "
+            f"but execution needs {_RESEARCH_MAX_USDC / 1e6:.0f} USDC."
+        )
+        print(f"  Fund this wallet on Sepolia: {USER_ADDRESS}")
+    else:
+        try:
+            tx_hash = exec_client.execute_swap(delegation_id_2, tx_params)
+            tx_hex = tx_hash if tx_hash.startswith("0x") else "0x" + tx_hash
+            swap_executed = True
+        except Exception as exc:
+            print("  Swap failed cleanly.")
+            print(f"  Revert reason: {_revert_reason(exc)}")
 
     # --- After balances ---
     usdc_after = user_client.token_balance(USDC_ADDRESS, USER_ADDRESS)
@@ -221,9 +238,12 @@ def run_demo() -> None:
     print(f"    WETH: {weth_after / 1e18:.6f}  (delta: {(weth_after - weth_before) / 1e18:+.6f})")
     print(f"    ETH:  {eth_after  / 1e18:.6f}  (delta: {(eth_after  - eth_before)  / 1e18:+.6f})")
 
-    print(f"  tx hash: {tx_hex}")
-    print(f"  https://sepolia.etherscan.io/tx/{tx_hex}")
-    print("  SWAP EXECUTED SUCCESSFULLY")
+    if swap_executed and tx_hex:
+        print(f"  tx hash: {tx_hex}")
+        print(f"  https://sepolia.etherscan.io/tx/{tx_hex}")
+        print("  SWAP EXECUTED SUCCESSFULLY")
+    else:
+        print("  Scenario 1 stopped before execution settlement.")
     time.sleep(2)
 
     # ========================================================================
@@ -304,6 +324,7 @@ def run_demo() -> None:
     # ── Final banner ─────────────────────────────────────────────────────────
     print_header("DEMO COMPLETE")
     print("  Both scenarios ran on Ethereum Sepolia.")
+    print(f"  Demo funding wallet: {USER_ADDRESS}")
     print("  All transactions are verifiable on Etherscan.")
     print(f"  https://sepolia.etherscan.io/address/{EXECUTION_GATE_ADDRESS}")
 
