@@ -1,0 +1,36 @@
+{
+  "name": "intent-custody",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Proof of Intent Protocol — intent signing, delegation, and execution on EVM chains",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "ethereum",
+    "intents",
+    "eip712",
+    "ethers",
+    "defi",
+    "delegation",
+    "proof-of-intent"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.0.0"
+  },
+  "peerDependencies": {
+    "ethers": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "dotenv": "^16.0.0",
+    "typescript": "^5.0.0"
+  }
+}

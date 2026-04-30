@@ -18,3 +18,5 @@ build/
 # AXL build + private identity keys
 vendor/
 agents/keys/
+
+node_modules/

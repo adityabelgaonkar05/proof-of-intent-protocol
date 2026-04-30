@@ -1,0 +1,77 @@
+[
+  {
+    "type": "function",
+    "name": "registerAgent",
+    "inputs": [
+      { "name": "agentAddress", "type": "address" },
+      { "name": "name", "type": "string" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "freezeAgent",
+    "inputs": [{ "name": "agentAddress", "type": "address" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "unfreezeAgent",
+    "inputs": [{ "name": "agentAddress", "type": "address" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isActiveAgent",
+    "inputs": [{ "name": "agentAddress", "type": "address" }],
+    "outputs": [{ "name": "", "type": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "agents",
+    "inputs": [{ "name": "", "type": "address" }],
+    "outputs": [
+      { "name": "name", "type": "string" },
+      { "name": "owner", "type": "address" },
+      { "name": "active", "type": "bool" },
+      { "name": "registeredAt", "type": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isRegistered",
+    "inputs": [{ "name": "", "type": "address" }],
+    "outputs": [{ "name": "", "type": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "AgentRegistered",
+    "inputs": [
+      { "name": "agentAddress", "type": "address", "indexed": true },
+      { "name": "owner", "type": "address", "indexed": true },
+      { "name": "name", "type": "string", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "AgentFrozen",
+    "inputs": [
+      { "name": "agentAddress", "type": "address", "indexed": true },
+      { "name": "by", "type": "address", "indexed": true }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "AgentUnfrozen",
+    "inputs": [
+      { "name": "agentAddress", "type": "address", "indexed": true },
+      { "name": "by", "type": "address", "indexed": true }
+    ]
+  }
+]

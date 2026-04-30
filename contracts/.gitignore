@@ -7,3 +7,6 @@ lib/
 
 # Deployment broadcast logs (commit these if you want on-chain record)
 broadcast/
+
+node_modules/
+

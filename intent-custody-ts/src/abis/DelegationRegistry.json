@@ -1,0 +1,136 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      { "name": "_intentRegistry", "type": "address" },
+      { "name": "_agentRegistry", "type": "address" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "delegateFromRoot",
+    "inputs": [
+      { "name": "rootIntentId", "type": "bytes32" },
+      {
+        "name": "childScope",
+        "type": "tuple",
+        "components": [
+          { "name": "maxAmountIn", "type": "uint256" },
+          { "name": "minAmountOut", "type": "uint256" },
+          { "name": "allowedProtocols", "type": "bytes32[]" },
+          { "name": "deadline", "type": "uint256" }
+        ]
+      },
+      { "name": "delegateTo", "type": "address" }
+    ],
+    "outputs": [{ "name": "delegationId", "type": "bytes32" }],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "delegateFromDelegation",
+    "inputs": [
+      { "name": "parentDelegationId", "type": "bytes32" },
+      {
+        "name": "childScope",
+        "type": "tuple",
+        "components": [
+          { "name": "maxAmountIn", "type": "uint256" },
+          { "name": "minAmountOut", "type": "uint256" },
+          { "name": "allowedProtocols", "type": "bytes32[]" },
+          { "name": "deadline", "type": "uint256" }
+        ]
+      },
+      { "name": "delegateTo", "type": "address" }
+    ],
+    "outputs": [{ "name": "delegationId", "type": "bytes32" }],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getDelegation",
+    "inputs": [{ "name": "delegationId", "type": "bytes32" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "components": [
+          { "name": "parentId", "type": "bytes32" },
+          { "name": "isRootIntent", "type": "bool" },
+          {
+            "name": "scope",
+            "type": "tuple",
+            "components": [
+              { "name": "maxAmountIn", "type": "uint256" },
+              { "name": "minAmountOut", "type": "uint256" },
+              { "name": "allowedProtocols", "type": "bytes32[]" },
+              { "name": "deadline", "type": "uint256" }
+            ]
+          },
+          { "name": "delegatedTo", "type": "address" },
+          { "name": "executed", "type": "bool" }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "markExecuted",
+    "inputs": [{ "name": "delegationId", "type": "bytes32" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setExecutionGate",
+    "inputs": [{ "name": "_executionGate", "type": "address" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "intentRegistry",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "agentRegistry",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "executionGate",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "delegationExists",
+    "inputs": [{ "name": "", "type": "bytes32" }],
+    "outputs": [{ "name": "", "type": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "delegationUsed",
+    "inputs": [{ "name": "", "type": "bytes32" }],
+    "outputs": [{ "name": "", "type": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "DelegationCreated",
+    "inputs": [
+      { "name": "delegationId", "type": "bytes32", "indexed": true },
+      { "name": "parentId", "type": "bytes32", "indexed": true },
+      { "name": "delegatedTo", "type": "address", "indexed": true }
+    ]
+  }
+]
