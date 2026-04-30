@@ -131,19 +131,25 @@ def _dispatch_tool(name: str, inputs: dict[str, Any], state: dict[str, Any]) -> 
     user_address = Account.from_key(USER_PRIVATE_KEY).address
 
     if name == "compile_intent":
+        import time as _time
         nonce = get_nonce(w3, user_address)
-        intent = compile_intent(
-            user_request=inputs["user_request"],
-            owner_address=user_address,
-            current_nonce=nonce,
-        )
-        state["intent"] = intent
-        return intent
+        compiled = compile_intent(inputs["user_request"])
+        # Augment with on-chain fields the compiler doesn't produce
+        compiled["owner"] = user_address
+        compiled["authorizedOrchestrator"] = user_address
+        compiled["nonce"] = nonce
+        compiled["deadline"] = int(_time.time()) + compiled.pop("deadlineMinutes", 30) * 60
+        # Convert protocol names to keccak hex ids
+        from web3 import Web3 as _Web3
+        compiled["allowedProtocols"] = [
+            _Web3.keccak(text=p).hex() for p in compiled.get("allowedProtocols", [])
+        ]
+        state["intent"] = compiled
+        return compiled
 
     if name == "register_intent":
         intent = inputs["intent"]
-        domain_sep = get_domain_separator(w3)
-        signature = sign_intent(intent, USER_PRIVATE_KEY, domain_sep)
+        signature = sign_intent(intent, USER_PRIVATE_KEY)
         receipt = client_register_intent(w3, intent, signature, USER_PRIVATE_KEY)
         intent_id = extract_intent_id_from_receipt(receipt)
         state["intent_id"] = intent_id

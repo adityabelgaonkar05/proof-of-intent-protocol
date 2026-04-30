@@ -242,7 +242,7 @@ contract DelegationRegistryTest is Test {
         DelegationRegistry.Scope memory scope = _narrowScope();
         scope.maxAmountIn = 0.6 ether;
         vm.prank(agent);
-        vm.expectRevert("Amount exceeds root");
+        vm.expectRevert("Amount exceeds scope");
         delegationRegistry.delegateFromDelegation(parentId, scope, subAgent);
     }
 

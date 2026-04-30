@@ -91,9 +91,9 @@ contract DelegationRegistry {
         require(!delegation.executed, "Already executed");
 
         Scope storage parentScope = delegation.scope;
-        require(childScope.maxAmountIn <= parentScope.maxAmountIn, "Amount exceeds root");
-        require(childScope.minAmountOut >= parentScope.minAmountOut, "MinOut below root");
-        require(childScope.deadline <= parentScope.deadline, "Deadline exceeds root");
+        require(childScope.maxAmountIn <= parentScope.maxAmountIn, "Amount exceeds scope");
+        require(childScope.minAmountOut >= parentScope.minAmountOut, "MinOut below scope");
+        require(childScope.deadline <= parentScope.deadline, "Deadline exceeds scope");
         require(
             _isSubset(childScope.allowedProtocols, parentScope.allowedProtocols),
             "Protocols not subset"

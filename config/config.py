@@ -28,6 +28,7 @@ CHAIN_ID = 84532  # Base Sepolia
 
 _deployed: dict = json.loads((_ROOT / "config" / "deployed.json").read_text())
 
+AGENT_REGISTRY_ADDRESS: str = _deployed["agentRegistry"]
 INTENT_REGISTRY_ADDRESS: str = _deployed["intentRegistry"]
 DELEGATION_REGISTRY_ADDRESS: str = _deployed["delegationRegistry"]
 EXECUTION_GATE_ADDRESS: str = _deployed["executionGate"]
@@ -44,6 +45,7 @@ def _load_abi(contract_name: str) -> list:
     return json.loads(path.read_text())["abi"]
 
 
+AGENT_REGISTRY_ABI = _load_abi("AgentRegistry")
 INTENT_REGISTRY_ABI = _load_abi("IntentRegistry")
 DELEGATION_REGISTRY_ABI = _load_abi("DelegationRegistry")
 EXECUTION_GATE_ABI = _load_abi("ExecutionGate")
@@ -56,5 +58,5 @@ from web3 import Web3  # noqa: E402
 
 KNOWN_PROTOCOLS: dict[str, str] = {
     name: Web3.keccak(text=name).hex()
-    for name in ["uniswap-v3", "curve", "balancer-v2", "aave-v3", "1inch"]
+    for name in ["Uniswap-V3", "Curve", "Balancer-V2", "Aave-V3", "1inch"]
 }

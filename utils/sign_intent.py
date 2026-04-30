@@ -5,7 +5,7 @@ from web3 import Web3
 from config.config import CHAIN_ID, INTENT_REGISTRY_ADDRESS
 
 DOMAIN = {
-    "name": "IntentCustodyProtocol",
+    "name": "IntentRegistry",
     "version": "1",
     "chainId": CHAIN_ID,
     "verifyingContract": INTENT_REGISTRY_ADDRESS,
@@ -13,13 +13,14 @@ DOMAIN = {
 
 INTENT_TYPE = {
     "Intent": [
-        {"name": "owner",            "type": "address"},
-        {"name": "tokenIn",          "type": "address"},
-        {"name": "maxAmountIn",      "type": "uint256"},
-        {"name": "minAmountOut",     "type": "uint256"},
-        {"name": "allowedProtocols", "type": "bytes32[]"},
-        {"name": "deadline",         "type": "uint256"},
-        {"name": "nonce",            "type": "uint256"},
+        {"name": "owner",                   "type": "address"},
+        {"name": "authorizedOrchestrator",  "type": "address"},
+        {"name": "tokenIn",                 "type": "address"},
+        {"name": "maxAmountIn",             "type": "uint256"},
+        {"name": "minAmountOut",            "type": "uint256"},
+        {"name": "allowedProtocols",        "type": "bytes32[]"},
+        {"name": "deadline",                "type": "uint256"},
+        {"name": "nonce",                   "type": "uint256"},
     ]
 }
 
@@ -36,6 +37,7 @@ def sign_intent(intent: dict, private_key: str) -> str:
 
 def build_intent(
     owner: str,
+    authorized_orchestrator: str,
     token_in: str,
     max_amount_in: int,
     min_amount_out: int,
@@ -43,9 +45,10 @@ def build_intent(
     deadline: int,
     nonce: int,
 ) -> dict:
-    protocol_hashes = [Web3.keccak(text=name) for name in allowed_protocols]
+    protocol_hashes = [Web3.keccak(text=name).hex() for name in allowed_protocols]
     return {
         "owner": Web3.to_checksum_address(owner),
+        "authorizedOrchestrator": Web3.to_checksum_address(authorized_orchestrator),
         "tokenIn": Web3.to_checksum_address(token_in),
         "maxAmountIn": max_amount_in,
         "minAmountOut": min_amount_out,
@@ -67,10 +70,11 @@ if __name__ == "__main__":
 
     intent = build_intent(
         owner=owner,
+        authorized_orchestrator=owner,  # use self as orchestrator for standalone test
         token_in="0x036CbD53842c5426634e7929541eC2318f3dCF7e",  # USDC on Base Sepolia
         max_amount_in=100 * 10**6,   # 100 USDC
         min_amount_out=99 * 10**18,  # 99 output tokens
-        allowed_protocols=["uniswap-v3"],
+        allowed_protocols=["Uniswap-V3"],
         deadline=int(time.time()) + 3600,
         nonce=0,
     )

@@ -6,9 +6,11 @@ from web3.types import TxReceipt
 from config.config import (
     RPC_URL,
     CHAIN_ID,
+    AGENT_REGISTRY_ADDRESS,
     INTENT_REGISTRY_ADDRESS,
     DELEGATION_REGISTRY_ADDRESS,
     EXECUTION_GATE_ADDRESS,
+    AGENT_REGISTRY_ABI,
     INTENT_REGISTRY_ABI,
     DELEGATION_REGISTRY_ABI,
     EXECUTION_GATE_ABI,
@@ -29,6 +31,10 @@ class ContractClient:
         if not self.w3.is_connected():
             raise ConnectionError(f"Cannot connect to RPC: {RPC_URL}")
         self.account = Account.from_key(private_key)
+        self.agent_registry = self.w3.eth.contract(
+            address=Web3.to_checksum_address(AGENT_REGISTRY_ADDRESS),
+            abi=AGENT_REGISTRY_ABI,
+        )
         self.intent_registry = self.w3.eth.contract(
             address=Web3.to_checksum_address(INTENT_REGISTRY_ADDRESS),
             abi=INTENT_REGISTRY_ABI,

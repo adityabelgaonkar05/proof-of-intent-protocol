@@ -21,22 +21,22 @@ _client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
 # ---------------------------------------------------------------------------
 
 _SIMULATED_LIQUIDITY: dict[str, dict] = {
-    "uniswap-v3": {
+    "Uniswap-V3": {
         "available": True,
         "estimated_slippage_bps": 15,
         "depth_eth": 500,
     },
-    "curve": {
+    "Curve": {
         "available": True,
         "estimated_slippage_bps": 8,
         "depth_eth": 300,
     },
-    "balancer-v2": {
+    "Balancer-V2": {
         "available": True,
         "estimated_slippage_bps": 20,
         "depth_eth": 150,
     },
-    "aave-v3": {
+    "Aave-V3": {
         "available": False,
         "reason": "not a spot-swap venue",
     },
