@@ -450,6 +450,17 @@ pre {
   color: var(--white);
 }
 
+@media (max-width: 768px) {
+  .install-block-mobile {
+    flex-direction: row;
+    align-items: center;
+    padding: 5px 12px;
+    max-height: 70px;
+    gap: 10px;
+    min-width: 0;
+  }
+}
+
 /* function chips */
 .hero__chips {
   display: flex;
@@ -476,6 +487,126 @@ pre {
 .chip__args {
   color: var(--muted);
   font-size: 11px;
+}
+
+/* ================================================================
+   TECH STRIP
+================================================================= */
+/* ================================================================
+   INTEGRATIONS
+================================================================= */
+.intg {
+  padding: 110px 0;
+  background: var(--carbon);
+  border-bottom: 1px solid var(--border);
+}
+
+.intg__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  border: 1px solid var(--border);
+}
+
+.intg-card {
+  padding: 48px 44px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+
+.intg-card:nth-child(2n) {
+  border-right: none;
+}
+
+.intg-card:nth-child(n+3) {
+  border-bottom: none;
+}
+
+.intg-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--yellow);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.intg-card:hover {
+  background: rgba(255, 230, 0, 0.02);
+}
+
+.intg-card:hover::before {
+  transform: scaleX(1);
+}
+
+.intg-card__top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.intg-card__category {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--yellow);
+}
+
+.intg-card__name {
+  font-family: var(--font-display);
+  font-size: clamp(52px, 6vw, 80px);
+  letter-spacing: 0.02em;
+  line-height: 0.9;
+  color: var(--white);
+}
+
+.intg-card__what {
+  font-size: 15px;
+  color: var(--muted2);
+  line-height: 1.75;
+  flex: 1;
+}
+
+.intg-card__detail {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 900px) {
+  .intg__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .intg-card {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 36px 32px;
+  }
+
+  .intg-card:last-child {
+    border-bottom: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .intg-card {
+    padding: 28px 24px;
+  }
 }
 
 /* ================================================================
@@ -1585,9 +1716,6 @@ pre {
     line-height: 1.2;
   }
 
-  .install-block {
-    min-width: 0;
-  }
 
   .chip {
     width: 100%;
@@ -1643,16 +1771,21 @@ pre {
   }
 
   .demo-panel__hd {
+    flex-direction: column;
+    align-items: flex-start;
     padding: 14px 16px;
+    gap: 10px;
   }
 
   .demo-metrics {
-    gap: 18px;
+    gap: 12px 20px;
+    width: 100%;
   }
 
   .demo-status {
-    letter-spacing: 0.11em;
-    font-size: 12px;
+    letter-spacing: 0.1em;
+    font-size: 11px;
+    line-height: 1.5;
   }
 
   .bw__grid {
@@ -1662,25 +1795,42 @@ pre {
   .demo-pipe {
     flex-direction: column;
     align-items: flex-start;
-    padding: 24px;
-    gap: 8px;
+    padding: 24px 20px;
+    gap: 0;
   }
 
   .demo-pipe__step {
     flex-direction: column;
     align-items: flex-start;
+    width: 100%;
   }
 
   .demo-pipe__edge {
-    width: 1px;
-    height: 32px;
+    width: 2px;
+    height: 28px;
     transform: none;
+    margin-left: 16px;
   }
 
   .demo-pipe__edge::after {
-    top: 50%;
-    right: -9px;
-    transform: rotate(90deg);
+    content: '▾';
+    top: auto;
+    bottom: -10px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    font-size: 14px;
+  }
+
+  .demo-node {
+    width: 100%;
+    text-align: left;
+  }
+
+  .demo-node__lbl,
+  .demo-node__sub,
+  .demo-node__scope {
+    text-align: left;
   }
 
   .stats__grid {
@@ -1691,6 +1841,13 @@ pre {
     border-right: none;
     padding: 0;
     margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .stats__eyebrow,
+  .stats__note {
+    text-align: center;
+    justify-content: center;
   }
 
   .demo-result {
@@ -1802,11 +1959,29 @@ pre {
   }
 
   .demo-status {
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
+    font-size: 10.5px;
+  }
+
+  .demo-metric {
+    min-width: 80px;
+  }
+
+  .demo-metric__lbl {
+    font-size: 10px;
+    letter-spacing: 0.14em;
   }
 
   .demo-metric__val {
-    font-size: 14px;
+    font-size: 13px;
+  }
+
+  .demo-pipe {
+    padding: 20px 14px;
+  }
+
+  .demo-pipe__edge {
+    margin-left: 12px;
   }
 
   .demo-result__body {
@@ -2406,11 +2581,30 @@ pre {
   border: 1px solid;
 }
 
-.dg-export-row__type--class    { color: #7eb7ff; border-color: rgba(126,183,255,0.3); }
-.dg-export-row__type--function { color: var(--green); border-color: rgba(0,232,122,0.3); }
-.dg-export-row__type--helper   { color: var(--amber); border-color: rgba(245,166,35,0.3); }
-.dg-export-row__type--constant { color: var(--yellow); border-color: rgba(255,230,0,0.3); }
-.dg-export-row__type--error    { color: var(--red); border-color: rgba(255,53,53,0.3); }
+.dg-export-row__type--class {
+  color: #7eb7ff;
+  border-color: rgba(126, 183, 255, 0.3);
+}
+
+.dg-export-row__type--function {
+  color: var(--green);
+  border-color: rgba(0, 232, 122, 0.3);
+}
+
+.dg-export-row__type--helper {
+  color: var(--amber);
+  border-color: rgba(245, 166, 35, 0.3);
+}
+
+.dg-export-row__type--constant {
+  color: var(--yellow);
+  border-color: rgba(255, 230, 0, 0.3);
+}
+
+.dg-export-row__type--error {
+  color: var(--red);
+  border-color: rgba(255, 53, 53, 0.3);
+}
 
 .dg-export-row__desc {
   font-size: 12px;
@@ -2683,9 +2877,21 @@ pre {
     grid-template-columns: 1fr 72px;
     grid-template-rows: auto auto;
   }
-  .dg-export-row__name { grid-column: 1; grid-row: 1; }
-  .dg-export-row__type { grid-column: 2; grid-row: 1; }
-  .dg-export-row__desc { grid-column: 1 / -1; grid-row: 2; }
+
+  .dg-export-row__name {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .dg-export-row__type {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .dg-export-row__desc {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 
   .dg-error-row {
     grid-template-columns: 1fr;

@@ -63,7 +63,7 @@ function Nav({ navigate, page }) {
             <a href="#mechanism">Protocol</a>
             <a href="#build">Build</a>
             <a href="#demo">Demo</a>
-            <a href="#stack">Stack</a>
+            <a href="#integrations">Integrations</a>
             <button className="nav__devguide" onClick={() => navigate('devguide')}>Dev Guide</button>
           </>
         ) : (
@@ -119,11 +119,11 @@ function Hero({ navigate }) {
         </div>
 
         <div className="hero__install">
-          <div className="install-block">
+          <div className="install-block install-block-mobile">
             <span className="install-block__lang">Python</span>
             <code>$ <span>pip install proof-of-intent</span></code>
           </div>
-          <div className="install-block">
+          <div className="install-block install-block-mobile">
             <span className="install-block__lang">TypeScript</span>
             <code>$ <span>npm i proof-of-intent</span></code>
           </div>
@@ -777,80 +777,58 @@ function LiveDemo() {
 }
 
 /* ================================================================
-   BUILT WITH
+   INTEGRATIONS
 ================================================================= */
-const STACK = [
-  {
-    name: 'FOUNDRY',
-    type: 'Contract Testing',
-    problem: 'ABI parity between Python web3.py, ethers v6, and Solidity ABIs required deterministic artifact output across all three runtimes without manual transcription.',
-    solved: 'forge build generates canonical JSON ABIs consumed by both SDKs and the Python ContractClient. Single source of truth; no manual ABI copying.',
-  },
-  {
-    name: 'ETHERS V6',
-    type: 'TypeScript SDK',
-    problem: 'EIP-712 signing with nested structs and dynamic arrays requires exact domain encoding. Small field-order differences silently produce invalid signatures that revert on-chain.',
-    solved: 'ethers v6 TypedDataEncoder handles the full signing pipeline. Output was tested against web3.py encode_structured_data to guarantee cross-SDK consistency.',
-  },
-  {
-    name: 'WEB3.PY',
-    type: 'Python Agents',
-    problem: 'Python agents need async contract reads and writes with proper revert reason surfacing. Raw web3 calls swallow revert strings by default.',
-    solved: 'ContractClient wraps async call patterns, decodes revert reason strings, and surfaces them directly — matching the error reference exactly.',
-  },
+const INTEGRATIONS = [
   {
     name: 'AXL',
-    type: 'Agent Transport',
-    problem: 'Orchestrator, research agent, and execution agent must communicate without shared memory — simulating real multi-agent process separation.',
-    solved: 'AXL handles agent-to-agent message routing across process boundaries, enabling the demo to mirror production-grade multi-agent separation of concerns.',
+    category: 'Agent Transport',
+    what: 'Encrypted P2P mesh that carries messages between the orchestrator, research agent, and execution agent across process boundaries — no shared memory, no central broker. Each agent is a sovereign process; AXL is the only wire between them.',
+    detail: 'Yggdrasil spanning-tree routing · ed25519 identity keys · local HTTP API',
+  },
+  {
+    name: 'UNISWAP V3',
+    category: 'Execution Layer',
+    what: 'The destination for every authorized swap. SwapRouter02 on Sepolia is the terminal step in the pipeline — everything the protocol does (signing, delegating, verifying) exists to ensure that only the exact trade the user authorized reaches this point.',
+    detail: 'SwapRouter02 · USDC→WETH · live Sepolia liquidity',
   },
   {
     name: 'ENS',
-    type: 'Optional Persistence',
-    problem: 'Intent metadata needed a human-readable on-chain anchor that survives contract redeployment and is independent of the intentId bytes32.',
-    solved: 'ENS text record integration via Ethereum Sepolia Resolver. Non-blocking — the protocol proceeds even if the ENS write fails or the name is not configured.',
+    category: 'On-Chain Identity',
+    what: "Binds an intentId to a human-readable name on Ethereum's resolver. Anyone can look up an agent's authorization history by name rather than bytes32. Non-blocking — the protocol continues normally if the ENS write fails or the name isn't configured.",
+    detail: 'Sepolia Resolver · text record · intentId anchor',
   },
   {
     name: '0G NETWORK',
-    type: 'Optional Storage',
-    problem: 'Full intent payloads are too large for practical on-chain storage. A decentralized alternative is needed without compromising protocol correctness.',
-    solved: '0G provides verifiable decentralized storage for raw intent JSON. Upload is non-blocking — all security guarantees hold whether or not 0G is available.',
-  },
-  {
-    name: 'ETHEREUM SEPOLIA',
-    type: 'Testnet',
-    problem: 'Live testnet verification requires stable Uniswap V3 pool liquidity, reproducible contract addresses, and readable revert reasons surfaced through Etherscan.',
-    solved: 'Four contracts deployed at fixed Sepolia addresses. SwapRouter02 provides real Uniswap V3 execution. All transactions independently verifiable via Etherscan.',
+    category: 'Decentralized Storage',
+    what: 'Stores the full intent JSON payload off-chain in verifiable decentralized storage. The on-chain registry holds the hash and intentId; 0G holds the human-readable data. Non-blocking — all security guarantees hold whether or not 0G is reachable.',
+    detail: '0G Newton testnet · root hash verified · fire-and-forget upload',
   },
 ]
 
-function BuiltWith() {
+function Integrations() {
   const [ref, vis] = useReveal()
   return (
-    <section id="stack" className="bw">
+    <section id="integrations" className="intg">
       <div className="wrap">
         <div className={`sec-head reveal${vis ? ' visible' : ''}`} ref={ref}>
-          <span className="sec-label">05 / Stack</span>
-          <h2 className="sec-title">BUILT WITH</h2>
+          <span className="sec-label">05 / Integrations</span>
+          <h2 className="sec-title">POWERED BY</h2>
           <p className="sec-sub">
-            Engineering cards. Every dependency chosen because it solved a specific
-            problem that nothing else solved the same way.
+            Four external integrations. Each one chosen for a specific role in the pipeline —
+            none of them decorative.
           </p>
         </div>
 
-        <div className="bw__grid">
-          {STACK.map((s) => (
-            <div key={s.name} className="stack-card">
-              <div className="stack-card__name">{s.name}</div>
-              <div className="stack-card__type">{s.type}</div>
-              <div className="stack-card__block">
-                <span className="stack-card__tag">Problem</span>
-                {s.problem}
+        <div className="intg__grid">
+          {INTEGRATIONS.map((s) => (
+            <div key={s.name} className="intg-card">
+              <div className="intg-card__top">
+                <div className="intg-card__category">{s.category}</div>
+                <h3 className="intg-card__name">{s.name}</h3>
               </div>
-              <div className="stack-card__block">
-                <span className="stack-card__tag stack-card__tag--solved">Solved</span>
-                {s.solved}
-              </div>
+              <p className="intg-card__what">{s.what}</p>
+              <div className="intg-card__detail">{s.detail}</div>
             </div>
           ))}
         </div>
@@ -926,7 +904,7 @@ export default function App() {
           <HowItWorks />
           <GetStarted navigate={navigate} />
           <LiveDemo />
-          <BuiltWith />
+          <Integrations />
         </>
       )}
       <Footer navigate={navigate} />
