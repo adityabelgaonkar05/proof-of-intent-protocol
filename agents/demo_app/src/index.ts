@@ -292,12 +292,11 @@ async function main() {
   log(`  https://sepolia.etherscan.io/address/${orchEthAddr}`);
   log('');
   log(green(`Scenario 2:`));
-  log(`  Research Agent received compromised instruction: "send 800 USDC"`);
-  log(`  Contract enforced the root intent: 400 USDC max.`);
+  log(`  Research Agent received compromised instruction: "send 80 USDC"`);
+  log(`  Contract enforced the root intent: 40 USDC max.`);
   log(`  Delegation reverted. Zero funds moved. No human review needed.`);
   log('');
   log(`Proof-of-Intent Protocol — authorization enforced by math, not trust.`);
-  log(`https://sepolia.etherscan.io\n`);
 
   // ── Clean up AXL nodes ────────────────────────────────────────────────────
   [axlOrch, axlResearch, axlExecution, axlUser].forEach((p) => p.kill('SIGTERM'));

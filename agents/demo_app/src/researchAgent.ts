@@ -9,7 +9,7 @@
  *
  * Scenario 2 (compromised):
  *   5. Receives ATTACK_TASK from Orchestrator.
- *   6. Attempts sub-delegation for 800 USDC (exceeds 400 USDC root intent).
+ *   6. Attempts sub-delegation for 80 USDC (exceeds 40 USDC root intent).
  *   7. Contract reverts → reports BLOCKED to Orchestrator.
  */
 
@@ -20,8 +20,8 @@ import { sendMessage, waitForType } from './axlClient';
 const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
 const WETH_ADDRESS = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14';
 const SLIPPAGE = 0.95;        // 5% slippage buffer on minAmountOut
-const HONEST_USDC = 400;      // authorised amount
-const ATTACK_USDC = 800;      // exceeds the 400 USDC root intent
+const HONEST_USDC = 4;        // authorised amount
+const ATTACK_USDC = 80;       // exceeds the 40 USDC root intent
 
 const PAD = '[RESEARCH]     ';
 const log = (msg: string) => console.log(`${PAD}${msg}`);

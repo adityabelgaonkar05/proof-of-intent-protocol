@@ -255,6 +255,12 @@ export class ContractClient {
       const tmpPath = join(tmpdir(), `poip-intent-${intentId.slice(2, 18)}.json`);
       await writeFile(tmpPath, payload, 'utf-8');
 
+      // Suppress the 0G SDK's verbose progress logs.
+      const origLog = console.log;
+      const origInfo = console.info;
+      console.log = () => {};
+      console.info = () => {};
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let file: any;
       try {
@@ -274,12 +280,14 @@ export class ContractClient {
 
           if (uploadErr) throw uploadErr;
 
-          console.log(`0G storage: intent ${intentId.slice(0, 10)}... stored — root ${result.rootHash}`);
+          origLog(`0G storage: intent ${intentId.slice(0, 10)}... stored — root ${result.rootHash}`);
           return result.rootHash as string;
         } finally {
           zgProvider.destroy();
         }
       } finally {
+        console.log = origLog;
+        console.info = origInfo;
         // Explicitly close the FileHandle ZgFile opened — leaving it open starves
         // the AXL HTTP poller by holding a libuv I/O handle alive.
         if (file?.close) await (file.close() as Promise<void>).catch(() => {});

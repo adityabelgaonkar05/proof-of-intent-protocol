@@ -27,7 +27,7 @@ import { sendMessage, waitForType, sleep } from './axlClient';
 // ---------------------------------------------------------------------------
 
 const USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
-const GOAL = 'Find the best USDC yield opportunity and execute it, max 400 USDC, only use Uniswap or Aave, valid for 2 hours.';
+const GOAL = 'Find the best USDC yield opportunity and execute it, max 40 USDC, only use Uniswap or Aave, valid for 2 hours.';
 
 const PAD = '[USER]         ';
 const log = (msg: string) => console.log(`${PAD}${msg}`);
@@ -68,7 +68,7 @@ Respond with ONLY valid JSON (no markdown):
 {"maxUsdc": <number>, "deadlineHours": <number>, "protocols": [<string>...]}
 
 Protocol names must be exactly from: "Uniswap-V3", "Aave-V3"
-Example: {"maxUsdc": 400, "deadlineHours": 2, "protocols": ["Uniswap-V3", "Aave-V3"]}`,
+Example: {"maxUsdc": 40, "deadlineHours": 2, "protocols": ["Uniswap-V3", "Aave-V3"]}`,
         },
       ],
     }),
@@ -127,10 +127,10 @@ async function main() {
       log(`Claude extracted: ${params.maxUsdc} USDC | ${params.protocols.join(', ')} | ${params.deadlineHours}h`);
     } catch {
       log(`Claude unavailable — using defaults`);
-      params = { maxUsdc: 400, deadlineHours: 2, protocols: ['Uniswap-V3', 'Aave-V3'] };
+      params = { maxUsdc: 40, deadlineHours: 2, protocols: ['Uniswap-V3', 'Aave-V3'] };
     }
   } else {
-    params = { maxUsdc: 400, deadlineHours: 2, protocols: ['Uniswap-V3', 'Aave-V3'] };
+    params = { maxUsdc: 40, deadlineHours: 2, protocols: ['Uniswap-V3', 'Aave-V3'] };
     log(`Goal: "${GOAL}"`);
     log(`Parsed: max ${params.maxUsdc} USDC | ${params.protocols.join(', ')} | ${params.deadlineHours}h deadline`);
   }
