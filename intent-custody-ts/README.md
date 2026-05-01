@@ -1,4 +1,4 @@
-# intent-custody
+# proof-of-intent
 
 TypeScript SDK for the [Proof of Intent Protocol](https://github.com/your-org/proof-of-intent-protocol).
 
@@ -7,7 +7,7 @@ Mirrors the Python SDK (`utils/contract_client.py`, `utils/sign_intent.py`, `uti
 ## Installation
 
 ```bash
-npm install intent-custody ethers
+npm install proof-of-intent ethers
 ```
 
 ## Quick start
@@ -25,7 +25,7 @@ import {
   getNonce,
   ContractClient,
   UNISWAP_V3,
-} from 'intent-custody';
+} from 'proof-of-intent';
 
 const config = loadConfig({
   ...loadDeployedAddresses({
@@ -106,7 +106,7 @@ console.log('Swap tx:', txHash);
 ### Passing config explicitly
 
 ```typescript
-import { loadConfig } from 'intent-custody';
+import { loadConfig } from 'proof-of-intent';
 
 const config = loadConfig({
   rpcUrl:                   'https://mainnet.infura.io/v3/YOUR_KEY',
@@ -121,7 +121,7 @@ const config = loadConfig({
 ### Using a deployed.json file
 
 ```typescript
-import { loadConfig, loadDeployedAddresses } from 'intent-custody';
+import { loadConfig, loadDeployedAddresses } from 'proof-of-intent';
 import deployed from './config/deployed.json';
 
 const config = loadConfig(loadDeployedAddresses(deployed));
@@ -180,7 +180,7 @@ These mirror the Python module-level functions for ad-hoc use without a `Contrac
 ### Protocol IDs
 
 ```typescript
-import { UNISWAP_V3, CURVE, BALANCER_V2, AAVE_V3, ONEINCH, protocolId, protocolName } from 'intent-custody';
+import { UNISWAP_V3, CURVE, BALANCER_V2, AAVE_V3, ONEINCH, protocolId, protocolName } from 'proof-of-intent';
 
 // Pre-computed keccak256 hashes
 console.log(UNISWAP_V3); // 0x...

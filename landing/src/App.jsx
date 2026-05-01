@@ -112,7 +112,7 @@ function Hero() {
           </div>
           <div className="install-block">
             <span className="install-block__lang">TypeScript</span>
-            <code>$ <span>npm install intent-custody ethers</span></code>
+            <code>$ <span>npm install proof-of-intent ethers</span></code>
           </div>
         </div>
 
@@ -327,7 +327,7 @@ sub_id = await client.delegate_from_delegation(
 await client.execute_swap(sub_id, tx_params)
 `
 
-const TS_CODE = `import { buildIntent, signIntent, ContractClient } from 'intent-custody'
+const TS_CODE = `import { buildIntent, signIntent, ContractClient } from 'proof-of-intent'
 
 // 1. Build and sign
 const intent = buildIntent({
@@ -647,7 +647,7 @@ function LiveDemo() {
                 → sub-delegation) and verified every constraint before allowing
                 the swap to proceed. Delegation marked as executed on-chain.
               </p>
-              <div className="demo-result__badge">INTENT CUSTODY VERIFIED · CHAIN VALIDATED</div>
+              <div className="demo-result__badge">PROOF OF INTENT VERIFIED · CHAIN VALIDATED</div>
               <div className="demo-result__links">
                 <a
                   className="etherscan-link"

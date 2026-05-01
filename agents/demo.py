@@ -86,7 +86,7 @@ def _revert_reason(exc: Exception) -> str:
 def run_demo() -> None:
 
     # ── Banner ──────────────────────────────────────────────────────────────
-    print_header("INTENT CUSTODY PROTOCOL — LIVE DEMO")
+    print_header("PROOF OF INTENT PROTOCOL — LIVE DEMO")
     print("Chain: Ethereum Sepolia")
     print("Contracts deployed at:")
     print(f"  IntentRegistry:     {INTENT_REGISTRY_ADDRESS}")

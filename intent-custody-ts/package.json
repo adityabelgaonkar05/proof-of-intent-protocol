@@ -1,5 +1,5 @@
 {
-  "name": "intent-custody",
+  "name": "proof-of-intent",
   "version": "0.1.0",
   "description": "TypeScript SDK for the Proof of Intent Protocol — intent signing, delegation, and execution on EVM chains",
   "main": "dist/index.js",

@@ -178,7 +178,7 @@ print(f"Swap: https://sepolia.etherscan.io/tx/{tx_hash}")
 ## Quick Start — TypeScript SDK
 
 ```bash
-cd intent-custody-ts
+cd proof-of-intent-ts
 npm install
 npm run build          # compiles to dist/
 ```
@@ -194,7 +194,7 @@ import {
   loadConfig, loadDeployedAddresses,
   buildIntent, signIntent, getNonce,
   ContractClient, verifyChain, UNISWAP_V3,
-} from './intent-custody-ts/src/index';
+} from './proof-of-intent-ts/src/index';
 
 const config = loadConfig({
   ...loadDeployedAddresses(require('./config/deployed.json')),
@@ -254,7 +254,7 @@ const txHash = await execClient.executeSwap(delegationId, txParams);
 console.log('https://sepolia.etherscan.io/tx/' + txHash);
 ```
 
-A full end-to-end example with env-var loading is in [intent-custody-ts/examples/tradingBot.ts](intent-custody-ts/examples/tradingBot.ts).
+A full end-to-end example with env-var loading is in [proof-of-intent-ts/examples/tradingBot.ts](proof-of-intent-ts/examples/tradingBot.ts).
 
 ---
 
