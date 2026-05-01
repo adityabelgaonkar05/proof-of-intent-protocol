@@ -1,11 +1,15 @@
 # ---------------------------------------------------------------------------
 # utils — public API
 #
-# Helpers are importable without DEPLOYER_PRIVATE_KEY in env:
+# Helpers are importable with no env vars set:
 #     from utils import usdc, weth, in_minutes
 #
-# SDK objects trigger config loading (requires DEPLOYER_PRIVATE_KEY):
+# SDK objects are loaded lazily on first access:
 #     from utils import ContractClient, build_intent, sign_intent
+#
+# ContractClient accepts any private key as a constructor argument and
+# requires only PRIVATE_KEY (or equivalent) in the environment.
+# DEPLOYER_PRIVATE_KEY is only needed by the full reference pipeline.
 # ---------------------------------------------------------------------------
 
 from .helpers import (

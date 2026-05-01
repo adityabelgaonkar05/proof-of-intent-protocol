@@ -22,7 +22,12 @@ CLAUDE_API_KEY: str = os.getenv("CLAUDE_API_KEY", "")
 OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
 RPC_URL = os.getenv("RPC_URL", "https://ethereum-sepolia-rpc.publicnode.com")
-DEPLOYER_PRIVATE_KEY = _require("DEPLOYER_PRIVATE_KEY")
+# DEPLOYER_PRIVATE_KEY is optional at import time so that SDK users who pass
+# their key directly to ContractClient(key) can import this module without
+# setting pipeline-specific variables.  The full pipeline (examples/quickstart,
+# orchestrator) still requires it and will surface a clear error at runtime
+# when it tries to derive ORCHESTRATOR_ADDRESS or USER_ADDRESS from an empty key.
+DEPLOYER_PRIVATE_KEY: str = os.getenv("DEPLOYER_PRIVATE_KEY", "")
 # USER_PRIVATE_KEY defaults to DEPLOYER_PRIVATE_KEY so a single-key setup works out of the box.
 USER_PRIVATE_KEY: str = os.getenv("USER_PRIVATE_KEY") or DEPLOYER_PRIVATE_KEY
 CHAIN_ID = int(os.getenv("CHAIN_ID", "11155111"))
@@ -37,10 +42,10 @@ EXECUTION_PRIVATE_KEY: str = os.getenv("EXECUTION_PRIVATE_KEY", "")
 
 from eth_account import Account as _Account  # noqa: E402
 
-ORCHESTRATOR_ADDRESS: str    = _Account.from_key(DEPLOYER_PRIVATE_KEY).address
+ORCHESTRATOR_ADDRESS: str    = _Account.from_key(DEPLOYER_PRIVATE_KEY).address if DEPLOYER_PRIVATE_KEY else ""
 RESEARCH_AGENT_ADDRESS: str  = _Account.from_key(RESEARCH_PRIVATE_KEY).address if RESEARCH_PRIVATE_KEY else ""
 EXECUTION_AGENT_ADDRESS: str = _Account.from_key(EXECUTION_PRIVATE_KEY).address if EXECUTION_PRIVATE_KEY else ""
-USER_ADDRESS: str            = _Account.from_key(USER_PRIVATE_KEY).address
+USER_ADDRESS: str            = _Account.from_key(USER_PRIVATE_KEY).address if USER_PRIVATE_KEY else ""
 
 # Token addresses on Ethereum Sepolia
 USDC_ADDRESS: str = os.getenv("USDC_ADDRESS", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
