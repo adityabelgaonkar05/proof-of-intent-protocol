@@ -77,3 +77,9 @@ const client = new ContractClient({
 npm install
 npm run build   # produces dist/ with .js and .d.ts
 ```
+
+
+## Contributors
+
+- [@adityabelgaonkar05](https://github.com/adityabelgaonkar05)
+- [@akankshaagroya](https://github.com/akankshaagroya)

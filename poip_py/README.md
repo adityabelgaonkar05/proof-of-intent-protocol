@@ -93,3 +93,9 @@ params  = compile_intent("swap 200 USDC for ETH using Uniswap within 2 hours")
 client  = ContractClient(private_key=os.environ["PRIVATE_KEY"])
 intent_id = client.create_intent(**params)
 ```
+
+
+## Contributors
+
+- [@adityabelgaonkar05](https://github.com/adityabelgaonkar05)
+- [@akankshaagroya](https://github.com/akankshaagroya)
