@@ -31,6 +31,31 @@ const ENS_RESOLVER_ABI = [
   },
 ];
 
+// Minimal ERC20 ABI — only the functions needed for approve/allowance/balance checks.
+const ERC20_ABI = [
+  {
+    inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }],
+    name: 'allowance',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
+    name: 'approve',
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'account', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Struct encoders (shared by ContractClient and module-level helpers)
 // ---------------------------------------------------------------------------
@@ -260,6 +285,21 @@ export class ContractClient {
       'DelegationCreated',
       'delegationId',
     );
+  }
+
+  async ensureTokenApproval(tokenAddress: string, spender: string, amount: bigint): Promise<void> {
+    const token = new ethers.Contract(ethers.getAddress(tokenAddress), ERC20_ABI, this.wallet);
+    const current = (await token.allowance(this.wallet.address, ethers.getAddress(spender))) as bigint;
+    if (current < amount) {
+      await this.sendTxReceipt(
+        token.approve(ethers.getAddress(spender), amount) as Promise<ethers.ContractTransactionResponse>,
+      );
+    }
+  }
+
+  async tokenBalance(tokenAddress: string, account: string): Promise<bigint> {
+    const token = new ethers.Contract(ethers.getAddress(tokenAddress), ERC20_ABI, this.provider);
+    return token.balanceOf(ethers.getAddress(account)) as Promise<bigint>;
   }
 
   async executeSwap(delegationId: string, txParams: TxParamsData): Promise<string> {
