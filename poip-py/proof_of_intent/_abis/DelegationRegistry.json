@@ -1,0 +1,377 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_intentRegistry",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_agentRegistry",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "agentRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "delegateFromDelegation",
+    "inputs": [
+      {
+        "name": "parentDelegationId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "childScope",
+        "type": "tuple",
+        "internalType": "struct DelegationRegistry.Scope",
+        "components": [
+          {
+            "name": "maxAmountIn",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minAmountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowedProtocols",
+            "type": "bytes32[]",
+            "internalType": "bytes32[]"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "delegateTo",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "delegationId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "delegateFromRoot",
+    "inputs": [
+      {
+        "name": "rootIntentId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "childScope",
+        "type": "tuple",
+        "internalType": "struct DelegationRegistry.Scope",
+        "components": [
+          {
+            "name": "maxAmountIn",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minAmountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowedProtocols",
+            "type": "bytes32[]",
+            "internalType": "bytes32[]"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "delegateTo",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "delegationId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "delegationExists",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "delegationUsed",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "delegations",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "parentId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "isRootIntent",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "scope",
+        "type": "tuple",
+        "internalType": "struct DelegationRegistry.Scope",
+        "components": [
+          {
+            "name": "maxAmountIn",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minAmountOut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowedProtocols",
+            "type": "bytes32[]",
+            "internalType": "bytes32[]"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "delegatedTo",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "executed",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "executionGate",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getDelegation",
+    "inputs": [
+      {
+        "name": "delegationId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct DelegationRegistry.Delegation",
+        "components": [
+          {
+            "name": "parentId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "isRootIntent",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "scope",
+            "type": "tuple",
+            "internalType": "struct DelegationRegistry.Scope",
+            "components": [
+              {
+                "name": "maxAmountIn",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "minAmountOut",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "allowedProtocols",
+                "type": "bytes32[]",
+                "internalType": "bytes32[]"
+              },
+              {
+                "name": "deadline",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "delegatedTo",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "executed",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "intentRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "markExecuted",
+    "inputs": [
+      {
+        "name": "delegationId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setExecutionGate",
+    "inputs": [
+      {
+        "name": "_executionGate",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "DelegationCreated",
+    "inputs": [
+      {
+        "name": "delegationId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "parentId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "delegatedTo",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  }
+]

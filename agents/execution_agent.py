@@ -10,7 +10,7 @@ Reports COMPLETE or FAILED back to the Orchestrator via AXL.
 import json
 
 import config.config as config
-from utils.contract_client import ContractClient
+from proof_of_intent import ContractClient
 from utils import axl_client
 from config.config import USDC_ADDRESS, EXECUTION_GATE_ADDRESS
 

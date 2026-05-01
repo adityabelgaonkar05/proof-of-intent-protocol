@@ -35,8 +35,8 @@ from config.config import (
     WETH_ADDRESS,
     UNISWAP_ROUTER_ADDRESS,
 )
-from utils.sign_intent import build_intent, sign_intent
-from utils.contract_client import ContractClient, TransactionRevertError
+from proof_of_intent import ContractClient, build_intent, sign_intent
+from proof_of_intent.errors import TransactionRevertError
 
 # ---------------------------------------------------------------------------
 # Constants

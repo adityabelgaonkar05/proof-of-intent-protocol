@@ -46,3 +46,19 @@ export function fromToken(units: bigint, decimals: number): number {
 export function inMinutes(n: number): bigint {
   return BigInt(Math.floor(Date.now() / 1000) + n * 60);
 }
+
+/** Return a Unix timestamp (as bigint) n hours from now. */
+export function inHours(n: number): bigint {
+  return BigInt(Math.floor(Date.now() / 1000) + n * 3600);
+}
+
+// Short-name aliases matching the Python SDK surface.
+/** Convert USDC amount to raw units. usdc(500) → 500_000_000n. Accepts number or bigint. */
+export function usdc(amount: number | bigint): bigint {
+  return typeof amount === 'bigint' ? amount * 1_000_000n : BigInt(Math.round(amount * 1e6));
+}
+
+/** Convert WETH/ETH amount to raw units. weth(0.15) → 150_000_000_000_000_000n. */
+export function weth(amount: number | bigint): bigint {
+  return typeof amount === 'bigint' ? amount * 10n ** 18n : BigInt(Math.round(amount * 1e18));
+}

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proof-of-intent"
+version = "0.1.0"
+description = "Python SDK for the Proof-of-Intent Protocol — intent signing, delegation, and execution on EVM chains"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Proof-of-Intent Contributors" }]
+requires-python = ">=3.11"
+keywords = ["ethereum", "intents", "eip712", "defi", "delegation", "web3"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "web3>=6.0.0",
+    "eth-account>=0.10.0",
+]
+
+[project.optional-dependencies]
+ai  = ["anthropic>=0.20.0", "openai>=1.0.0"]
+dev = ["pytest>=8.0", "python-dotenv>=1.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["proof_of_intent*"]
+
+[tool.setuptools.package-data]
+proof_of_intent = ["_abis/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-v"

@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv()
 
-from utils import ContractClient, usdc, weth, in_minutes
+from proof_of_intent import ContractClient, usdc, weth, in_minutes
 from config.config import (
     require_pipeline_keys,
     DEPLOYER_PRIVATE_KEY,

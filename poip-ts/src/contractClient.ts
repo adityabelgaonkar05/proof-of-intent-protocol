@@ -1,7 +1,28 @@
 import { ethers } from 'ethers';
 import type { TransactionReceipt } from 'ethers';
 import type { IntentData, ScopeData, TxParamsData, DelegationData, Config } from './types';
+import { loadConfig } from './config';
 import { signIntent, buildIntent } from './signIntent';
+
+/**
+ * Options for ContractClient.
+ * Only `privateKey` is required — all other fields default to deployed Sepolia contracts.
+ */
+export interface ContractClientOptions {
+  privateKey: string;
+  rpcUrl?: string;
+  chainId?: number;
+  agentRegistryAddress?: string;
+  intentRegistryAddress?: string;
+  delegationRegistryAddress?: string;
+  executionGateAddress?: string;
+  ensName?: string;
+  ensResolverAddress?: string;
+  ensRegistryAddress?: string;
+  zgApiKey?: string;
+  zgRpcUrl?: string;
+  zgIndexerUrl?: string;
+}
 
 import AGENT_REGISTRY_ABI from './abis/AgentRegistry.json';
 import INTENT_REGISTRY_ABI from './abis/IntentRegistry.json';
@@ -124,27 +145,36 @@ export class ContractClient {
   readonly executionGate: ethers.Contract;
   readonly config: Config;
 
-  constructor(privateKey: string, config: Config) {
-    this.config = config;
-    this.provider = new ethers.JsonRpcProvider(config.rpcUrl);
+  /**
+   * Instantiate a ContractClient.
+   *
+   *   // Minimal — all contract addresses default to deployed Sepolia contracts:
+   *   const client = new ContractClient({ privateKey: process.env.PRIVATE_KEY! });
+   *
+   *   // With overrides:
+   *   const client = new ContractClient({ privateKey, rpcUrl: 'https://...', chainId: 1 });
+   */
+  constructor({ privateKey, ...configOverrides }: ContractClientOptions) {
+    this.config = loadConfig(configOverrides);
+    this.provider = new ethers.JsonRpcProvider(this.config.rpcUrl);
     this.wallet = new ethers.Wallet(privateKey, this.provider);
     this.agentRegistry = new ethers.Contract(
-      ethers.getAddress(config.agentRegistryAddress),
+      ethers.getAddress(this.config.agentRegistryAddress),
       AGENT_REGISTRY_ABI,
       this.wallet,
     );
     this.intentRegistry = new ethers.Contract(
-      ethers.getAddress(config.intentRegistryAddress),
+      ethers.getAddress(this.config.intentRegistryAddress),
       INTENT_REGISTRY_ABI,
       this.wallet,
     );
     this.delegationRegistry = new ethers.Contract(
-      ethers.getAddress(config.delegationRegistryAddress),
+      ethers.getAddress(this.config.delegationRegistryAddress),
       DELEGATION_REGISTRY_ABI,
       this.wallet,
     );
     this.executionGate = new ethers.Contract(
-      ethers.getAddress(config.executionGateAddress),
+      ethers.getAddress(this.config.executionGateAddress),
       EXECUTION_GATE_ABI,
       this.wallet,
     );

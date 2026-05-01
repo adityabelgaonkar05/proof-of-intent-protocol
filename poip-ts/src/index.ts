@@ -20,9 +20,12 @@ export {
   toUsdc, fromUsdc,
   toWeth, fromWeth,
   toToken, fromToken,
-  inMinutes,
+  inMinutes, inHours,
+  // Short-name aliases matching the Python SDK surface
+  usdc, weth,
 } from './helpers';
 
+export type { ContractClientOptions } from './contractClient';
 export {
   ContractClient,
   getProvider,

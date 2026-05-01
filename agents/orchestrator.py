@@ -10,7 +10,7 @@ import json
 import sys
 
 import config.config as config
-from utils.contract_client import ContractClient
+from proof_of_intent import ContractClient
 from utils import axl_client
 
 

@@ -15,7 +15,8 @@ import time
 from web3 import Web3
 
 import config.config as config
-from utils.contract_client import ContractClient, get_web3, get_delegation
+from proof_of_intent import ContractClient
+from utils.contract_client import get_web3, get_delegation
 from utils import axl_client
 
 COMPROMISED = False
