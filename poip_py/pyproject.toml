@@ -24,6 +24,11 @@ dependencies = [
     "eth-account>=0.10.0",
 ]
 
+[project.urls]
+Homepage = ""
+Repository = "https://github.com/adityabelgaonkar05/proof-of-intent-protocol"
+Documentation = "https://github.com/adityabelgaonkar05/proof-of-intent-protocol/blob/main/README.md"
+
 [project.optional-dependencies]
 ai  = ["anthropic>=0.20.0", "openai>=1.0.0"]
 dev = ["pytest>=8.0", "python-dotenv>=1.0"]

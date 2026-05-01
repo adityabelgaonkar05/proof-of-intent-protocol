@@ -7,14 +7,14 @@
  * USER_PRIVATE_KEY is optional — defaults to PRIVATE_KEY when not set.
  * All contract addresses default to the deployed Sepolia contracts.
  *
- * Run from the poip-ts directory:
+ * Run from the poip_ts directory:
  *   npx tsx examples/quickstart.ts
  */
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Load .env from the package root (poip-ts/.env).
+// Load .env from the package root (poip_ts/.env).
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { Wallet } from 'ethers';

@@ -82,7 +82,7 @@
 
 ### What "SDK core" means
 
-The Python SDK is the self-contained `proof_of_intent` package in `poip-py/`.
+The Python SDK is the self-contained `proof_of_intent` package in `poip_py/`.
 It bundles its own ABIs and hardcodes Sepolia defaults — no dependency on
 `config/`, `contracts/out/`, or any pipeline key beyond `PRIVATE_KEY`.
 
@@ -117,13 +117,13 @@ ContractClient(private_key: str, *, rpc_url=..., chain_id=...,
 
 ```bash
 # From the repository root
-pip install -e ./poip-py
+pip install -e ./poip_py
 
 # With dev dependencies (pytest, python-dotenv)
-pip install -e "./poip-py[dev]"
+pip install -e "./poip_py[dev]"
 
 # With AI dependencies (anthropic, openai) for the compiler
-pip install -e "./poip-py[ai]"
+pip install -e "./poip_py[ai]"
 ```
 
 No other install step is needed. ABIs are bundled inside the package under
@@ -138,12 +138,12 @@ Only one environment variable is required to use the SDK on its own:
 | `PRIVATE_KEY` | Your Ethereum wallet private key (`0x…`). |
 
 ```bash
-cp .env.sdk.example poip-py/.env
+cp .env.sdk.example poip_py/.env
 # Fill in PRIVATE_KEY=0x...
 ```
 
 Contract addresses are hardcoded to the deployed Sepolia contracts in
-`poip-py/proof_of_intent/_defaults.py`. You can override them at construction time:
+`poip_py/proof_of_intent/_defaults.py`. You can override them at construction time:
 
 ```python
 client = ContractClient(
@@ -187,7 +187,7 @@ from_weth(150_000_000_000_000_000)   # → 0.15
 Run the 5-step standalone example (no pipeline, no extra config):
 
 ```bash
-cd poip-py
+cd poip_py
 cp .env.example .env   # fill in PRIVATE_KEY
 python examples/quickstart.py
 ```
@@ -598,7 +598,7 @@ quickest way to verify the full on-chain flow.
 ### Install
 
 ```bash
-cd poip-ts
+cd poip_ts
 npm install
 npm run build    # compiles TypeScript to dist/
 ```
@@ -769,7 +769,7 @@ const txParams: TxParamsData = {
 ### Run the example
 
 ```bash
-cd poip-ts
+cd poip_ts
 cp .env.example .env  # fill in private keys
 npx ts-node examples/tradingBot.ts
 ```
@@ -977,7 +977,7 @@ Ordered from most to least likely for a new developer.
 `agents/orchestrator.py`). These call `require_pipeline_keys()` at startup and
 exit immediately if the pipeline keys are absent.
 
-**The SDK itself** (`poip-py`) does NOT require `DEPLOYER_PRIVATE_KEY`. Only
+**The SDK itself** (`poip_py`) does NOT require `DEPLOYER_PRIVATE_KEY`. Only
 `PRIVATE_KEY` is needed for SDK-only usage.
 
 **Fix (pipeline):** Ensure `.env` has all four private keys and `load_dotenv()` runs before importing agents.
@@ -1178,14 +1178,14 @@ Network: **Ethereum Sepolia** (chainId `11155111`).
 
 ### Cross-reference: where these addresses live in the codebase
 
-| Address | Python SDK (`poip-py`) | Pipeline (`config/`) | TypeScript SDK (`poip-ts`) |
+| Address | Python SDK (`poip_py`) | Pipeline (`config/`) | TypeScript SDK (`poip_ts`) |
 |---|---|---|---|
 | `agentRegistry` | `_defaults.py` hardcoded | `deployed.json` via `_deployed["agentRegistry"]` | `SEPOLIA_DEFAULTS` in `config.ts` |
 | `intentRegistry` | `_defaults.py` hardcoded | `deployed.json` via `_deployed["intentRegistry"]` | `SEPOLIA_DEFAULTS` in `config.ts` |
 | `delegationRegistry` | `_defaults.py` hardcoded | `deployed.json` via `_deployed["delegationRegistry"]` | `SEPOLIA_DEFAULTS` in `config.ts` |
 | `executionGate` | `_defaults.py` hardcoded | `deployed.json` via `_deployed["executionGate"]` | `SEPOLIA_DEFAULTS` in `config.ts` |
 
-Both `poip-py` and `poip-ts` have these addresses as hardcoded defaults — no env
+Both `poip_py` and `poip_ts` have these addresses as hardcoded defaults — no env
 vars or config files needed. The pipeline (`agents/`, `config/`) reads from
 `config/deployed.json`.
 
@@ -1212,7 +1212,7 @@ address uniswapRouter = vm.envOr(
 
 This matches the Python default exactly.
 
-### Hardcoded in `poip-ts/src/config.ts`
+### Hardcoded in `poip_ts/src/config.ts`
 
 ```typescript
 const SEPOLIA_DEFAULTS = {

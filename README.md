@@ -178,7 +178,7 @@ print(f"Swap: https://sepolia.etherscan.io/tx/{tx_hash}")
 ## Quick Start — TypeScript SDK
 
 ```bash
-cd poip-ts
+cd poip_ts
 npm install
 npm run build          # compiles to dist/
 ```
@@ -254,7 +254,7 @@ const txHash = await execClient.executeSwap(delegationId, txParams);
 console.log('https://sepolia.etherscan.io/tx/' + txHash);
 ```
 
-A full end-to-end example with env-var loading is in [poip-ts/examples/tradingBot.ts](poip-ts/examples/tradingBot.ts).
+A full end-to-end example with env-var loading is in [poip_ts/examples/tradingBot.ts](poip_ts/examples/tradingBot.ts).
 
 ---
 

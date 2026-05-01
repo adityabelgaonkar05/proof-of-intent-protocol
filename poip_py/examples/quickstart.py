@@ -5,16 +5,16 @@ This example uses ONLY the proof_of_intent package.
 No pipeline config (config/config.py) is needed.
 
 Minimum requirements:
-    PRIVATE_KEY=0x...   (in poip-py/.env or the environment)
+    PRIVATE_KEY=0x...   (in poip_py/.env or the environment)
 
-Run from the poip-py directory:
+Run from the poip_py directory:
     python examples/quickstart.py
 """
 import os
 import sys
 import pathlib
 
-# Load .env from the package root (poip-py/.env)
+# Load .env from the package root (poip_py/.env)
 try:
     from dotenv import load_dotenv
     load_dotenv(pathlib.Path(__file__).parent.parent / ".env")

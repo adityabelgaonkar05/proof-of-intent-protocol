@@ -16,7 +16,7 @@
   ],
   "author": "Proof-of-Intent Contributors",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/abis dist/",
     "prepare": "npm run build",
     "test": "tsx test/integrationTest.ts"
   },
