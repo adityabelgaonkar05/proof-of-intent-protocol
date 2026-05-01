@@ -56,6 +56,16 @@ def _call_openai(natural_language: str) -> str:
 
 
 def compile_intent(natural_language: str) -> dict:
+    if USE_CLAUDE and not CLAUDE_API_KEY:
+        raise ValueError(
+            "CLAUDE_API_KEY is required for natural language compilation. "
+            "Add it to .env or set USE_CLAUDE=false to use OpenAI instead."
+        )
+    if not USE_CLAUDE and not OPENAI_API_KEY:
+        raise ValueError(
+            "OPENAI_API_KEY is required. "
+            "Add it to .env or set USE_CLAUDE=true to use Claude instead."
+        )
     raw = _call_claude(natural_language) if USE_CLAUDE else _call_openai(natural_language)
 
     try:
