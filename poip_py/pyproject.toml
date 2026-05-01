@@ -25,7 +25,6 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = ""
 Repository = "https://github.com/adityabelgaonkar05/proof-of-intent-protocol"
 Documentation = "https://github.com/adityabelgaonkar05/proof-of-intent-protocol/blob/main/README.md"
 

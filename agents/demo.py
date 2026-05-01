@@ -274,6 +274,7 @@ def run_demo() -> None:
     sig_2 = sign_intent(intent_2, USER_PRIVATE_KEY)
     intent_id_2 = user_client.register_intent(intent_2, sig_2)
     print(f"  intentId: {intent_id_2}")
+    time.sleep(2)  # wait for RPC propagation before delegating
 
     # Orchestrator delegates with full root scope (same as Scenario 1)
     root_scope_2 = {
