@@ -259,28 +259,31 @@ export class ContractClient {
       let file: any;
       try {
         file = await ZgFile.fromFilePath(tmpPath);
+
+        const zgProvider = new ethers.JsonRpcProvider(this.config.zgRpcUrl);
+        try {
+          const zgSigner = new ethers.Wallet(this.config.zgApiKey, zgProvider);
+          const indexer = new Indexer(this.config.zgIndexerUrl);
+
+          const [result, uploadErr] = await Promise.race([
+            indexer.upload(file, this.config.zgRpcUrl, zgSigner),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('0G upload timed out after 30s')), 30_000),
+            ),
+          ]) as [{ txHash: string; rootHash: string }, Error | null];
+
+          if (uploadErr) throw uploadErr;
+
+          console.log(`0G storage: intent ${intentId.slice(0, 10)}... stored — root ${result.rootHash}`);
+          return result.rootHash as string;
+        } finally {
+          zgProvider.destroy();
+        }
       } finally {
+        // Explicitly close the FileHandle ZgFile opened — leaving it open starves
+        // the AXL HTTP poller by holding a libuv I/O handle alive.
+        if (file?.close) await (file.close() as Promise<void>).catch(() => {});
         await unlink(tmpPath).catch(() => {});
-      }
-
-      const zgProvider = new ethers.JsonRpcProvider(this.config.zgRpcUrl);
-      try {
-        const zgSigner = new ethers.Wallet(this.config.zgApiKey, zgProvider);
-        const indexer = new Indexer(this.config.zgIndexerUrl);
-
-        const [result, uploadErr] = await Promise.race([
-          indexer.upload(file, this.config.zgRpcUrl, zgSigner),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('0G upload timed out after 30s')), 30_000),
-          ),
-        ]) as [{ txHash: string; rootHash: string }, Error | null];
-
-        if (uploadErr) throw uploadErr;
-
-        console.log(`0G storage: intent ${intentId.slice(0, 10)}... stored — root ${result.rootHash}`);
-        return result.rootHash as string;
-      } finally {
-        zgProvider.destroy();
       }
     } catch (e) {
       console.warn(`0G storage failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`);
