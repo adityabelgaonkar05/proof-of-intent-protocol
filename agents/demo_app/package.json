@@ -1,0 +1,20 @@
+{
+  "name": "poip-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack Proof-of-Intent Protocol demo: DeFi trading bot with scope-enforced delegation",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "demo": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "ethers": "^6.0.0",
+    "proof-of-intent": "^0.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

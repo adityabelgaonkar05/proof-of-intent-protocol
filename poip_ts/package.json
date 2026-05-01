@@ -1,6 +1,6 @@
 {
   "name": "proof-of-intent",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "TypeScript SDK for the Proof of Intent Protocol — intent signing, delegation, and scope-enforced execution on EVM chains",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -35,6 +35,9 @@
   },
   "peerDependencies": {
     "ethers": "^6.0.0"
+  },
+  "optionalDependencies": {
+    "@0glabs/0g-ts-sdk": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

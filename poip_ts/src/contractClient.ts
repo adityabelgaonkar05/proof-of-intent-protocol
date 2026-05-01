@@ -224,22 +224,68 @@ export class ContractClient {
    * Store the intent on 0G decentralised storage.
    * Returns the root-hash reference on success, null on any failure.
    * Non-blocking — callers should not await unless they need the reference.
-   *
-   * To enable: provide ZG_API_KEY in config and install the 0G SDK or make
-   * an HTTP POST to the 0G upload endpoint yourself inside this method.
+   * Requires ZG_API_KEY; skipped silently when unset.
    */
   async storeIntentOn0g(intent: IntentData, intentId: string): Promise<string | null> {
     if (!this.config.zgApiKey) {
       console.log('0G storage skipped: zgApiKey not set.');
       return null;
     }
-    console.warn(
-      'Warning [0G]: storeIntentOn0g not implemented. ' +
-        'Integrate the 0G SDK and POST to zgRpcUrl/zgIndexerUrl.',
-    );
-    void intent;
-    void intentId;
-    return null;
+
+    try {
+      // Dynamic import — @0glabs/0g-ts-sdk is optional; fails gracefully if absent.
+      // @ts-ignore — 0G SDK uses package exports unsupported by moduleResolution:node
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { Indexer, ZgFile } = await import('@0glabs/0g-ts-sdk') as any;
+      const { writeFile, unlink } = await import('fs/promises');
+      const { tmpdir } = await import('os');
+      const { join } = await import('path');
+
+      const payload = JSON.stringify({
+        intentId,
+        intent: {
+          ...intent,
+          maxAmountIn: intent.maxAmountIn.toString(),
+          minAmountOut: intent.minAmountOut.toString(),
+          deadline: intent.deadline.toString(),
+          nonce: intent.nonce.toString(),
+        },
+      });
+
+      const tmpPath = join(tmpdir(), `poip-intent-${intentId.slice(2, 18)}.json`);
+      await writeFile(tmpPath, payload, 'utf-8');
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let file: any;
+      try {
+        file = await ZgFile.fromFilePath(tmpPath);
+      } finally {
+        await unlink(tmpPath).catch(() => {});
+      }
+
+      const zgProvider = new ethers.JsonRpcProvider(this.config.zgRpcUrl);
+      try {
+        const zgSigner = new ethers.Wallet(this.config.zgApiKey, zgProvider);
+        const indexer = new Indexer(this.config.zgIndexerUrl);
+
+        const [result, uploadErr] = await Promise.race([
+          indexer.upload(file, this.config.zgRpcUrl, zgSigner),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('0G upload timed out after 30s')), 30_000),
+          ),
+        ]) as [{ txHash: string; rootHash: string }, Error | null];
+
+        if (uploadErr) throw uploadErr;
+
+        console.log(`0G storage: intent ${intentId.slice(0, 10)}... stored — root ${result.rootHash}`);
+        return result.rootHash as string;
+      } finally {
+        zgProvider.destroy();
+      }
+    } catch (e) {
+      console.warn(`0G storage failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    }
   }
 
   /**
@@ -455,7 +501,7 @@ export async function registerIntentRaw(
 
 export function extractIntentIdFromReceipt(
   receipt: TransactionReceipt,
-  config: Config,
+  _config: Config,
 ): string {
   const iface = new ethers.Interface(INTENT_REGISTRY_ABI);
   return parseEvent(receipt, iface, 'IntentRegistered', 'intentId');
@@ -509,7 +555,7 @@ export async function delegateFromDelegation(
 
 export function extractDelegationIdFromReceipt(
   receipt: TransactionReceipt,
-  config: Config,
+  _config: Config,
 ): string {
   const iface = new ethers.Interface(DELEGATION_REGISTRY_ABI);
   return parseEvent(receipt, iface, 'DelegationCreated', 'delegationId');

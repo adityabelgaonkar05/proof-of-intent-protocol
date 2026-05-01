@@ -53,4 +53,4 @@ __all__ = [
     "POIPError", "TransactionRevertError", "ScopeViolationError", "DeadlineExpiredError",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"

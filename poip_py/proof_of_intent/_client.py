@@ -7,7 +7,10 @@ ContractClient — the main SDK entry point.
 from __future__ import annotations
 
 import dataclasses
+import json
+import threading
 import time
+import urllib.request
 
 from eth_account import Account
 from web3 import Web3
@@ -121,11 +124,15 @@ class ContractClient:
         execution_gate_address: str = DEFAULT_EXECUTION_GATE,
         ens_name: str = "",
         zg_api_key: str = "",
+        zg_rpc_url: str = "https://evmrpc-testnet.0g.ai",
+        zg_indexer_url: str = "https://indexer-storage-testnet-turbo.0g.ai",
     ) -> None:
         self._private_key = private_key
         self._chain_id = chain_id
         self._ens_name = ens_name
         self._zg_api_key = zg_api_key
+        self._zg_rpc_url = zg_rpc_url
+        self._zg_indexer_url = zg_indexer_url
 
         self.w3 = Web3(Web3.HTTPProvider(rpc_url))
         if not self.w3.is_connected():
@@ -195,6 +202,7 @@ class ContractClient:
             raise ValueError("IntentRegistered event not found in receipt")
         intent_id = "0x" + logs[0]["args"]["intentId"].hex()
         self._store_intent_on_ens(intent_id, self._ens_name)
+        self._store_intent_on_0g_async(intent, intent_id)
         return intent_id
 
     def create_intent(
@@ -344,6 +352,52 @@ class ContractClient:
             "allowedProtocols": [Web3.keccak(text=p).hex() for p in allowed_protocols],
             "deadline":         deadline,
         }
+
+    # ------------------------------------------------------------------
+    # 0G decentralised storage (non-blocking, optional)
+    # ------------------------------------------------------------------
+
+    def _store_intent_on_0g_async(self, intent: dict, intent_id: str) -> None:
+        """Fire-and-forget: upload intent JSON to 0G storage in a daemon thread."""
+        if not self._zg_api_key:
+            print("0G storage skipped: zg_api_key not set.")
+            return
+        t = threading.Thread(
+            target=self._store_intent_on_0g,
+            args=(intent, intent_id),
+            daemon=True,
+        )
+        t.start()
+
+    def _store_intent_on_0g(self, intent: dict, intent_id: str) -> str | None:
+        """Upload the intent as JSON to the 0G storage indexer. Returns root hash or None."""
+        try:
+            payload = json.dumps({
+                "intentId": intent_id,
+                "intent": {
+                    k: str(v) if isinstance(v, int) else v
+                    for k, v in intent.items()
+                },
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                f"{self._zg_indexer_url}/upload",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self._zg_api_key}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                result = json.loads(resp.read())
+            root = result.get("rootHash") or result.get("root") or result.get("txHash", "")
+            if root:
+                print(f"0G storage: intent {intent_id[:10]}... stored — root {root}")
+            return root or None
+        except Exception as exc:
+            print(f"Warning [0G]: {exc}")
+            return None
 
     # ------------------------------------------------------------------
     # ENS (non-blocking, optional)
