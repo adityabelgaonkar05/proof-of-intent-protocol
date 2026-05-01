@@ -10,7 +10,7 @@
   "dependencies": {
     "dotenv": "^16.0.0",
     "ethers": "^6.0.0",
-    "proof-of-intent": "../../poip_ts"
+    "proof-of-intent": "^0.1.4"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
