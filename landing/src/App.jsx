@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import DevGuide from './DevGuide.jsx'
 
 /* ─── helpers ─── */
 const delay = (ms) => new Promise((r) => setTimeout(r, ms))
+
+function getPage() {
+  return window.location.pathname === '/devguide' ? 'devguide' : 'home'
+}
 
 function useReveal() {
   const ref = useRef(null)
@@ -39,7 +44,7 @@ function useCountUp(target, duration, started) {
 /* ================================================================
    NAV
 ================================================================= */
-function Nav() {
+function Nav({ navigate, page }) {
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 48)
@@ -49,14 +54,21 @@ function Nav() {
   return (
     <nav className={`nav${scrolled ? ' scrolled' : ''}`}>
       <div className="nav__brand">
-        <span className="nav__pip">PIP</span>
+        <span className="nav__pip">POIP</span>
         <span className="nav__full">Proof of Intent Protocol</span>
       </div>
       <div className="nav__links">
-        <a href="#mechanism">Protocol</a>
-        <a href="#build">Build</a>
-        <a href="#demo">Demo</a>
-        <a href="#stack">Stack</a>
+        {page === 'home' ? (
+          <>
+            <a href="#mechanism">Protocol</a>
+            <a href="#build">Build</a>
+            <a href="#demo">Demo</a>
+            <a href="#stack">Stack</a>
+            <button className="nav__devguide" onClick={() => navigate('devguide')}>Dev Guide</button>
+          </>
+        ) : (
+          <button className="nav__back-link" onClick={() => navigate('home')}>← Protocol</button>
+        )}
         <a
           href="https://sepolia.etherscan.io/address/0x98d9ccA9b5F8abACB4c8BEC833C4ed206DC77954"
           target="_blank"
@@ -73,7 +85,7 @@ function Nav() {
 /* ================================================================
    HERO
 ================================================================= */
-function Hero() {
+function Hero({ navigate }) {
   return (
     <section id="hero" className="hero">
       <div className="hero__grid" />
@@ -84,7 +96,7 @@ function Hero() {
       <div className="hero__inner">
         <div className="hero__badge">
           <span className="dot dot--live" />
-          Live on Ethereum Sepolia · 4 contracts deployed
+          Live on Ethereum Sepolia
         </div>
 
         <h1 className="hero__h1">
@@ -103,16 +115,17 @@ function Hero() {
         <div className="hero__ctas">
           <a href="#mechanism" className="btn btn--primary">Read the Protocol</a>
           <a href="#demo" className="btn btn--outline">Run the Demo</a>
+          <button className="btn btn--outline" onClick={() => navigate('devguide')}>Dev Guide →</button>
         </div>
 
         <div className="hero__install">
           <div className="install-block">
             <span className="install-block__lang">Python</span>
-            <code>$ <span>pip install -r requirements.txt</span></code>
+            <code>$ <span>pip install proof-of-intent</span></code>
           </div>
           <div className="install-block">
             <span className="install-block__lang">TypeScript</span>
-            <code>$ <span>npm install proof-of-intent ethers</span></code>
+            <code>$ <span>npm i proof-of-intent</span></code>
           </div>
         </div>
 
@@ -173,9 +186,9 @@ function StatsBar() {
           Sepolia Testnet · Live contract data
         </div>
         <div className="stats__grid">
-          <StatItem value={47}    label="Intents Registered" />
-          <StatItem value={124}   label="Delegations Created" />
-          <StatItem value={18}    label="Attacks Blocked" />
+          <StatItem value={47} label="Intents Registered" />
+          <StatItem value={124} label="Delegations Created" />
+          <StatItem value={18} label="Attacks Blocked" />
           <StatItem value={14400} label="USDC Protected" prefix="$" />
         </div>
         <div className="stats__note">
@@ -216,7 +229,7 @@ function HowItWorks() {
               without a valid signature from the intent owner.
             </p>
             <div className="hiw-card__code">
-              <code>buildIntent(USDC, 500e6, [UNISWAP_V3], +1h)</code>
+              <code>buildIntent(USDC, 40e6, [UNISWAP_V3], +2h)</code>
               <code>signIntent(intent, userKey, config)</code>
               <code>registerIntent(intent, sig) → intentId</code>
             </div>
@@ -289,83 +302,103 @@ function HowItWorks() {
 /* ================================================================
    GET STARTED
 ================================================================= */
-const PY_CODE = `from utils.sign_intent import build_intent, sign_intent
-from utils.contract_client import ContractClient
-import time
+const PY_CODE = `from proof_of_intent import (
+    ContractClient, build_intent, sign_intent,
+    usdc, weth, in_hours, UNISWAP_V3,
+)
+import os
+
+USDC = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+WETH = "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14"
 
 # 1. Build and sign the intent
-intent = build_intent(
-    token_in=USDC_ADDRESS,
-    max_amount_in=500_000_000,        # 500 USDC (6 decimals)
-    min_amount_out=140_000_000_000_000_000,  # 0.14 WETH
-    protocols=["uniswap-v3"],
-    deadline=int(time.time()) + 3600,
-    authorized_orchestrator=ORCH_ADDRESS,
+client = ContractClient(private_key=os.environ["PRIVATE_KEY"])
+intent_id = client.create_intent(
+    token_in=USDC,
+    max_amount_in=usdc(40),   # user authorizes 40 USDC max
+    min_amount_out=weth(0.01),
+    allowed_protocols=["Uniswap-V3"],
+    deadline=in_hours(2),
 )
-sig = sign_intent(intent, USER_PRIVATE_KEY)
+# → intentId: 0x3f2a...bytes32
 
-# 2. Register on-chain
-client = ContractClient(config)
-intent_id = await client.register_intent(intent, sig)
-# → 0x3f2a...bytes32
-
-# 3. Orchestrator delegates to research agent
-delegation_id = await client.delegate_from_root(
-    intent_id,
-    scope={"max_amount_in": 500_000_000, "protocols": ["uniswap-v3"]},
-    delegate_to=RESEARCH_AGENT_ADDRESS,
+# 2. Orchestrator delegates to research agent
+scope = ContractClient.build_scope(
+    max_amount_in=usdc(40),
+    min_amount_out=weth(0.01),
+    allowed_protocols=["Uniswap-V3"],
+    deadline=in_hours(2),
+)
+delegation_id = client.delegate_from_root(
+    intent_id, scope, RESEARCH_AGENT_ADDRESS,
 )
 
-# 4. Research agent narrows scope and sub-delegates
-sub_id = await client.delegate_from_delegation(
+# 3. Research agent narrows scope and sub-delegates
+sub_id = client.delegate_from_delegation(
     delegation_id,
-    scope={"max_amount_in": 400_000_000},  # narrowed from 500
+    scope=ContractClient.build_scope(
+        max_amount_in=usdc(4),   # narrowed: actually swap 4 USDC
+        min_amount_out=weth(0.001),
+        allowed_protocols=["Uniswap-V3"],
+        deadline=in_hours(1),
+    ),
     delegate_to=EXECUTION_AGENT_ADDRESS,
 )
 
-# 5. Execution agent executes within bounds
-await client.execute_swap(sub_id, tx_params)
+# 4. Execution agent verifies chain and executes
+client.ensure_token_approval(USDC, client.execution_gate.address, usdc(4))
+tx_hash = client.execute_swap(sub_id, tx_params)
 `
 
-const TS_CODE = `import { buildIntent, signIntent, ContractClient } from 'proof-of-intent'
+const TS_CODE = `import { ContractClient, buildIntent, buildScope, signIntent,
+         usdc, weth, inHours, UNISWAP_V3, loadConfig, getNonce } from 'proof-of-intent'
+import { ethers } from 'ethers'
 
-// 1. Build and sign
+const USDC = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'
+const WETH = '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14'
+
+const config = loadConfig()   // Sepolia defaults — no .env address vars needed
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!)
+const client = new ContractClient({ privateKey: wallet.privateKey, ...config })
+
+// 1. Build, sign and register
+const nonce  = await getNonce(config, wallet.address)
 const intent = buildIntent({
-  tokenIn:               USDC_ADDRESS,
-  maxAmountIn:           500_000_000n,
-  minAmountOut:          140_000_000_000_000_000n,
-  allowedProtocols:      ['uniswap-v3'],
-  deadline:              Math.floor(Date.now() / 1000) + 3600,
-  authorizedOrchestrator: ORCH_ADDRESS,
+  owner: wallet.address,  authorizedOrchestrator: wallet.address,
+  tokenIn: USDC, maxAmountIn: usdc(40), minAmountOut: weth(0.01),
+  allowedProtocols: ['Uniswap-V3'], deadline: inHours(2), nonce,
 })
-const sig = await signIntent(intent, userKey, config)
+const intentId = await client.registerIntent(
+  intent, await signIntent(intent, wallet.privateKey, config)
+)
 
-// 2. Register on-chain
-const client = new ContractClient(config)
-const intentId = await client.registerIntent(intent, sig)
-// → 0x3f2a...bytes32
-
-// 3. Orchestrator delegates to research agent
+// 2. Orchestrator delegates to research agent
 const delegationId = await client.delegateFromRoot(
   intentId,
-  { maxAmountIn: 500_000_000n, allowedProtocols: ['uniswap-v3'] },
+  buildScope({ maxAmountIn: usdc(40), minAmountOut: weth(0.01),
+               allowedProtocols: ['Uniswap-V3'], deadline: inHours(2) }),
   researchAgentAddress,
 )
 
-// 4. Research agent narrows scope
+// 3. Research agent narrows scope
 const subId = await client.delegateFromDelegation(
   delegationId,
-  { maxAmountIn: 400_000_000n },  // narrowed from 500
+  buildScope({ maxAmountIn: usdc(4), minAmountOut: weth(0.001),
+               allowedProtocols: ['Uniswap-V3'], deadline: inHours(1) }),
   executionAgentAddress,
 )
 
-// 5. Execute within bounds
-await client.executeSwap(subId, txParams)
+// 4. Execute within bounds (UNISWAP_V3 = pre-hashed bytes32 constant)
+await client.ensureTokenApproval(USDC, config.executionGateAddress, usdc(4))
+const txHash = await client.executeSwap(subId, {
+  amountIn: usdc(4), minAmountOut: weth(0.001), protocol: UNISWAP_V3,
+  tokenIn: USDC, tokenOut: WETH, recipient: wallet.address,
+})
 `
 
 const API_METHODS = [
   { name: 'buildIntent', sig: '(params: IntentParams) → IntentData', desc: 'Construct an intent struct with auto-hashed protocol names and validated defaults.' },
-  { name: 'signIntent',  sig: '(intent, privateKey, config) → Promise<string>', desc: 'EIP-712 sign an intent against the IntentRegistry domain. Returns a hex signature.' },
+  { name: 'signIntent', sig: '(intent, privateKey, config) → Promise<string>', desc: 'EIP-712 sign an intent against the IntentRegistry domain. Returns a hex signature.' },
   { name: 'registerIntent', sig: '(intent, signature) → Promise<string>', desc: 'Submit signed intent to IntentRegistry on-chain. Returns intentId (bytes32).' },
   { name: 'delegateFromRoot', sig: '(intentId, scope, delegateTo) → Promise<string>', desc: 'Authorized orchestrator creates the root delegation for an intent. Returns delegationId.' },
   { name: 'delegateFromDelegation', sig: '(parentId, scope, delegateTo) → Promise<string>', desc: 'Agent sub-delegates to the next agent with a strictly narrowed scope.' },
@@ -374,38 +407,38 @@ const API_METHODS = [
 ]
 
 const ERRORS = [
-  { code: 'Already registered',       desc: 'Agent address is already in AgentRegistry. Each address can only register once.' },
-  { code: 'Zero address',             desc: 'A zero address was passed where a valid agent or orchestrator address was required.' },
-  { code: 'Not owner',                desc: 'Caller is not the intent owner. Only the original signer can revoke or manage their intent.' },
-  { code: 'Deadline passed',          desc: 'The intent or scope deadline is in the past. Create a new intent with a valid future deadline.' },
-  { code: 'Zero amount',              desc: 'maxAmountIn was zero. The intent must specify a positive token amount.' },
-  { code: 'No orchestrator set',      desc: 'The intent has no authorizedOrchestrator. An orchestrator address is required at registration.' },
-  { code: 'Invalid signature',        desc: 'EIP-712 signature does not match the intent owner. The intent data or signing key is wrong.' },
-  { code: 'Intent not found',         desc: 'No intent exists for the provided intentId. Verify the ID was returned from registerIntent.' },
+  { code: 'Already registered', desc: 'Agent address is already in AgentRegistry. Each address can only register once.' },
+  { code: 'Zero address', desc: 'A zero address was passed where a valid agent or orchestrator address was required.' },
+  { code: 'Not owner', desc: 'Caller is not the intent owner. Only the original signer can revoke or manage their intent.' },
+  { code: 'Deadline passed', desc: 'The intent or scope deadline is in the past. Create a new intent with a valid future deadline.' },
+  { code: 'Zero amount', desc: 'maxAmountIn was zero. The intent must specify a positive token amount.' },
+  { code: 'No orchestrator set', desc: 'The intent has no authorizedOrchestrator. An orchestrator address is required at registration.' },
+  { code: 'Invalid signature', desc: 'EIP-712 signature does not match the intent owner. The intent data or signing key is wrong.' },
+  { code: 'Intent not found', desc: 'No intent exists for the provided intentId. Verify the ID was returned from registerIntent.' },
   { code: 'Not authorized orchestrator', desc: 'Caller is not the orchestrator named in the intent. Only the named orchestrator can create a root delegation.' },
   { code: 'Target not registered agent', desc: 'The delegateTo address is not in AgentRegistry. Agents must self-register before receiving delegations.' },
-  { code: 'Amount exceeds root',      desc: 'Child scope maxAmountIn is larger than the root intent. Scope can only narrow — never widen.' },
-  { code: 'MinOut below root',        desc: 'Child scope minAmountOut is below the root floor. The protocol prevents accepting worse slippage than the user signed.' },
-  { code: 'Deadline exceeds root',    desc: 'Child scope deadline is later than the root intent. Delegations cannot extend the user\'s authorized window.' },
-  { code: 'Protocols not subset',     desc: 'The child scope includes a protocol not in the parent allowlist. Agents can only use a subset of parent-approved protocols.' },
-  { code: 'Root already delegated',   desc: 'A root delegation already exists for this intent. Each intent produces exactly one root delegation.' },
-  { code: 'Parent not found',         desc: 'The parent delegationId does not exist. Verify the ID returned from delegateFromRoot.' },
-  { code: 'Not delegated agent',      desc: 'Caller is not the agent the parent delegation was assigned to. Only the named agent can sub-delegate.' },
-  { code: 'Already executed',         desc: 'This delegation has already been used for a swap. Each delegation can trigger exactly one execution.' },
-  { code: 'Amount exceeds scope',     desc: 'Requested amountIn exceeds the delegation scope. ExecutionGate blocked the transaction before any tokens moved.' },
-  { code: 'MinOut below scope',       desc: 'Requested minAmountOut is below the scope floor. The agent attempted to accept worse slippage than authorized.' },
-  { code: 'Deadline exceeds scope',   desc: 'Execution timestamp is beyond the scope deadline. The delegation window has closed.' },
-  { code: 'Already sub-delegated',    desc: 'This delegation has already produced a child. Each delegation can be sub-delegated exactly once.' },
-  { code: 'Not execution gate',       desc: 'Caller is not the registered ExecutionGate. Only ExecutionGate can mark delegations as executed.' },
-  { code: 'Protocol not allowed',     desc: 'The swap protocol is not in the delegation\'s allowedProtocols list. Agent tried to use an unauthorized DEX.' },
-  { code: 'Exceeds root intent',      desc: 'Transaction amount exceeds the original root intent. ExecutionGate catches this even if intermediate delegations passed.' },
-  { code: 'Wrong token',              desc: 'tokenIn does not match the root intent. Agent tried to swap a different asset than the user authorized.' },
-  { code: 'Root deadline passed',     desc: 'Root intent deadline has expired even if the delegation deadline has not. The original authorization window is closed.' },
-  { code: 'Not authorized',           desc: 'Caller is not the agent assigned to this delegation. Only the delegated-to address can execute.' },
+  { code: 'Amount exceeds root', desc: 'Child scope maxAmountIn is larger than the root intent. Scope can only narrow — never widen.' },
+  { code: 'MinOut below root', desc: 'Child scope minAmountOut is below the root floor. The protocol prevents accepting worse slippage than the user signed.' },
+  { code: 'Deadline exceeds root', desc: 'Child scope deadline is later than the root intent. Delegations cannot extend the user\'s authorized window.' },
+  { code: 'Protocols not subset', desc: 'The child scope includes a protocol not in the parent allowlist. Agents can only use a subset of parent-approved protocols.' },
+  { code: 'Root already delegated', desc: 'A root delegation already exists for this intent. Each intent produces exactly one root delegation.' },
+  { code: 'Parent not found', desc: 'The parent delegationId does not exist. Verify the ID returned from delegateFromRoot.' },
+  { code: 'Not delegated agent', desc: 'Caller is not the agent the parent delegation was assigned to. Only the named agent can sub-delegate.' },
+  { code: 'Already executed', desc: 'This delegation has already been used for a swap. Each delegation can trigger exactly one execution.' },
+  { code: 'Amount exceeds scope', desc: 'Requested amountIn exceeds the delegation scope. ExecutionGate blocked the transaction before any tokens moved.' },
+  { code: 'MinOut below scope', desc: 'Requested minAmountOut is below the scope floor. The agent attempted to accept worse slippage than authorized.' },
+  { code: 'Deadline exceeds scope', desc: 'Execution timestamp is beyond the scope deadline. The delegation window has closed.' },
+  { code: 'Already sub-delegated', desc: 'This delegation has already produced a child. Each delegation can be sub-delegated exactly once.' },
+  { code: 'Not execution gate', desc: 'Caller is not the registered ExecutionGate. Only ExecutionGate can mark delegations as executed.' },
+  { code: 'Protocol not allowed', desc: 'The swap protocol is not in the delegation\'s allowedProtocols list. Agent tried to use an unauthorized DEX.' },
+  { code: 'Exceeds root intent', desc: 'Transaction amount exceeds the original root intent. ExecutionGate catches this even if intermediate delegations passed.' },
+  { code: 'Wrong token', desc: 'tokenIn does not match the root intent. Agent tried to swap a different asset than the user authorized.' },
+  { code: 'Root deadline passed', desc: 'Root intent deadline has expired even if the delegation deadline has not. The original authorization window is closed.' },
+  { code: 'Not authorized', desc: 'Caller is not the agent assigned to this delegation. Only the delegated-to address can execute.' },
   { code: 'Chain verification failed', desc: 'One or more nodes in the delegation chain failed validation. The full path from intent to execution is checked.' },
 ]
 
-function GetStarted() {
+function GetStarted({ navigate }) {
   const [codeTab, setCodeTab] = useState('python')
   const [docTab, setDocTab] = useState('api')
   const [ref, vis] = useReveal()
@@ -425,21 +458,26 @@ function GetStarted() {
             <div className="ba">
               <div className="ba__col ba__col--before">
                 <div className="ba__lbl">Before · Uncontrolled Agent</div>
-                <div className="ba__row"><span className="ba__icon">✗</span>Agent spends 2,400 USDC — user wanted 500</div>
+                <div className="ba__row"><span className="ba__icon">✗</span>Agent spends 240 USDC — user wanted 40</div>
                 <div className="ba__row"><span className="ba__icon">✗</span>Uses Curve instead of authorized Uniswap V3</div>
                 <div className="ba__row"><span className="ba__icon">✗</span>Deadline ignored; executes 3 hours late</div>
                 <div className="ba__row"><span className="ba__icon">✗</span>No audit trail, no on-chain proof, no recourse</div>
               </div>
               <div className="ba__col ba__col--after">
                 <div className="ba__lbl">After · Proof of Intent</div>
-                <div className="ba__row"><span className="ba__icon">✓</span>500 USDC hard cap enforced at ExecutionGate</div>
+                <div className="ba__row"><span className="ba__icon">✓</span>40 USDC hard cap enforced at ExecutionGate</div>
                 <div className="ba__row"><span className="ba__icon">✓</span>Protocol list is a signed, immutable subset</div>
                 <div className="ba__row"><span className="ba__icon">✓</span>Deadline checked at every delegation layer</div>
                 <div className="ba__row"><span className="ba__icon">✓</span>Full delegation chain verifiable on Sepolia</div>
               </div>
             </div>
 
-            <h3 className="gs__col-title" style={{ marginBottom: 16 }}>QUICKSTART</h3>
+            <div className="gs__col-title-row">
+              <h3 className="gs__col-title">QUICKSTART</h3>
+              <button className="gs__guide-link" onClick={() => navigate('devguide')}>
+                Full Dev Guide →
+              </button>
+            </div>
             <div className="tabs">
               <button className={`tab-btn${codeTab === 'python' ? ' active' : ''}`} onClick={() => setCodeTab('python')}>Python</button>
               <button className={`tab-btn${codeTab === 'typescript' ? ' active' : ''}`} onClick={() => setCodeTab('typescript')}>TypeScript</button>
@@ -457,18 +495,18 @@ function GetStarted() {
             <div className="docs-panel docs-panel--scroll">
               {docTab === 'api'
                 ? API_METHODS.map((m) => (
-                    <div key={m.name} className="api-row">
-                      <div className="api-row__name">{m.name}</div>
-                      <div className="api-row__sig">{m.sig}</div>
-                      <div className="api-row__desc">{m.desc}</div>
-                    </div>
-                  ))
+                  <div key={m.name} className="api-row">
+                    <div className="api-row__name">{m.name}</div>
+                    <div className="api-row__sig">{m.sig}</div>
+                    <div className="api-row__desc">{m.desc}</div>
+                  </div>
+                ))
                 : ERRORS.map((e) => (
-                    <div key={e.code} className="err-row">
-                      <div className="err-row__code">"{e.code}"</div>
-                      <div className="err-row__desc">{e.desc}</div>
-                    </div>
-                  ))
+                  <div key={e.code} className="err-row">
+                    <div className="err-row__code">"{e.code}"</div>
+                    <div className="err-row__desc">{e.desc}</div>
+                  </div>
+                ))
               }
             </div>
           </div>
@@ -482,54 +520,54 @@ function GetStarted() {
    LIVE DEMO
 ================================================================= */
 const NODES = [
-  { label: 'USER',           sub: 'Signs intent' },
-  { label: 'ORCHESTRATOR',   sub: 'Root delegation' },
+  { label: 'USER', sub: 'Signs intent' },
+  { label: 'ORCHESTRATOR', sub: 'Root delegation' },
   { label: 'RESEARCH AGENT', sub: 'Narrows scope' },
   { label: 'EXECUTION GATE', sub: 'Verifies chain' },
 ]
 
 function LiveDemo() {
-  const [phase, setPhase]       = useState('idle')   // idle|running|blocked|done
-  const [active, setActive]     = useState(-1)
-  const [scope, setScope]       = useState(500)
-  const [risk, setRisk]         = useState(500)
-  const [attackAmt, setAttack]  = useState(null)
-  const [glitch, setGlitch]     = useState(false)
-  const [edgeActive, setEdge]   = useState([false, false, false])
+  const [phase, setPhase] = useState('idle')
+  const [active, setActive] = useState(-1)
+  const [scope, setScope] = useState(40)
+  const [risk, setRisk] = useState(40)
+  const [attackAmt, setAttack] = useState(null)
+  const [glitch, setGlitch] = useState(false)
+  const [edgeActive, setEdge] = useState([false, false, false])
   const [ref, vis] = useReveal()
 
   const activateEdge = (i) =>
     setEdge((prev) => { const n = [...prev]; n[i] = true; return n })
 
   const runClean = useCallback(async () => {
-    setPhase('running'); setActive(-1); setScope(500); setRisk(500)
+    setPhase('running'); setActive(-1); setScope(40); setRisk(40)
     setAttack(null); setGlitch(false); setEdge([false, false, false])
 
     setActive(0); await delay(700)
     activateEdge(0); await delay(400)
-    setActive(1); setScope(500); await delay(700)
+    setActive(1); setScope(40); await delay(700)
     activateEdge(1); await delay(400)
-    setActive(2); setScope(400); setRisk(400); await delay(700)
+    setActive(2); setScope(4); setRisk(4); await delay(700)
     activateEdge(2); await delay(400)
-    setActive(3); setScope(300); setRisk(300); await delay(700)
+    setActive(3); await delay(700)
     setPhase('done')
   }, [])
 
   const runAttack = useCallback(async () => {
-    setPhase('running'); setActive(-1); setScope(500); setRisk(500)
+    setPhase('running'); setActive(-1); setScope(40); setRisk(40)
     setAttack(null); setGlitch(false); setEdge([false, false, false])
 
     setActive(0); await delay(700)
     activateEdge(0); await delay(400)
     setActive(1); await delay(700)
     activateEdge(1); await delay(400)
-    setActive(2); setAttack(800); await delay(600)
+    setActive(2); setAttack(80); await delay(600)
     setGlitch(true); await delay(1100)
     setGlitch(false); setPhase('blocked'); setRisk(0)
   }, [])
 
   const reset = () => {
-    setPhase('idle'); setActive(-1); setScope(500); setRisk(500)
+    setPhase('idle'); setActive(-1); setScope(40); setRisk(40)
     setAttack(null); setGlitch(false); setEdge([false, false, false])
   }
 
@@ -550,10 +588,10 @@ function LiveDemo() {
           <div className="demo-panel__hd">
             <div className="demo-status">
               <span className={`dot dot--${phase === 'blocked' ? 'red' : phase === 'done' ? 'green' : 'live'}`} />
-              {phase === 'idle'    && 'READY · AWAITING INPUT'}
+              {phase === 'idle' && 'READY · AWAITING INPUT'}
               {phase === 'running' && (attackAmt ? 'ATTACK SIMULATION · ACTIVE' : 'CLEAN RUN · ACTIVE')}
               {phase === 'blocked' && 'ATTACK BLOCKED · REVERTED ON-CHAIN'}
-              {phase === 'done'    && 'CLEAN RUN · SWAP EXECUTED SUCCESSFULLY'}
+              {phase === 'done' && 'CLEAN RUN · SWAP EXECUTED SUCCESSFULLY'}
             </div>
             <div className="demo-metrics">
               <div className="demo-metric">
@@ -589,19 +627,19 @@ function LiveDemo() {
                   <div className="demo-node__lbl">{node.label}</div>
                   <div className="demo-node__sub">{node.sub}</div>
                   {i === 0 && active >= 0 && (
-                    <div className="demo-node__scope">500 USDC max</div>
+                    <div className="demo-node__scope">40 USDC max</div>
                   )}
                   {i === 1 && active >= 1 && (
-                    <div className="demo-node__scope">→ delegating 500 USDC</div>
+                    <div className="demo-node__scope">→ delegating 40 USDC</div>
                   )}
                   {i === 2 && active >= 2 && !attackAmt && (
-                    <div className="demo-node__scope">→ 400 USDC scope</div>
+                    <div className="demo-node__scope">→ 4 USDC scope</div>
                   )}
                   {i === 2 && attackAmt && (
-                    <div className="demo-node__scope demo-node__scope--attack">→ 800 USDC ✗ EXCEEDS ROOT</div>
+                    <div className="demo-node__scope demo-node__scope--attack">→ 80 USDC ✗ EXCEEDS ROOT</div>
                   )}
                   {i === 3 && phase === 'done' && (
-                    <div className="demo-node__scope">→ 300 USDC · VERIFIED</div>
+                    <div className="demo-node__scope">→ 4 USDC · VERIFIED</div>
                   )}
                 </div>
                 {i < NODES.length - 1 && (
@@ -624,8 +662,8 @@ function LiveDemo() {
               </div>
               <div className="demo-result__revert">revert: "Amount exceeds root"</div>
               <p className="demo-result__body">
-                Research agent attempted to sub-delegate 800 USDC.
-                The root intent authorized a maximum of 500 USDC.
+                Research agent attempted to sub-delegate 80 USDC.
+                The root intent authorized a maximum of 40 USDC.
                 DelegationRegistry rejected the sub-delegation atomically.
                 No tokens were approved, transferred, or swapped.
                 Zero funds moved.
@@ -642,7 +680,7 @@ function LiveDemo() {
                 <span className="demo-result__title">SWAP EXECUTED SUCCESSFULLY</span>
               </div>
               <p className="demo-result__body">
-                300 USDC swapped for WETH via Uniswap V3 on Ethereum Sepolia.
+                4 USDC swapped for WETH via Uniswap V3 on Ethereum Sepolia.
                 ExecutionGate walked the full delegation chain (intent → root delegation
                 → sub-delegation) and verified every constraint before allowing
                 the swap to proceed. Delegation marked as executed on-chain.
@@ -658,7 +696,6 @@ function LiveDemo() {
                   View ExecutionGate ↗
                 </a>
                 <div className="qr-wrap">
-                  {/* stylized QR placeholder — links to ExecutionGate on Sepolia */}
                   <a
                     href="https://sepolia.etherscan.io/address/0x98d9ccA9b5F8abACB4c8BEC833C4ed206DC77954"
                     target="_blank"
@@ -666,48 +703,44 @@ function LiveDemo() {
                     title="Etherscan Sepolia · ExecutionGate"
                   >
                     <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="72" height="72" fill="#0d0d0d"/>
-                      {/* top-left finder */}
-                      <rect x="4" y="4" width="22" height="22" rx="0" fill="none" stroke="#ffe600" strokeWidth="2"/>
-                      <rect x="8" y="8" width="14" height="14" fill="#ffe600"/>
-                      {/* top-right finder */}
-                      <rect x="46" y="4" width="22" height="22" fill="none" stroke="#ffe600" strokeWidth="2"/>
-                      <rect x="50" y="8" width="14" height="14" fill="#ffe600"/>
-                      {/* bottom-left finder */}
-                      <rect x="4" y="46" width="22" height="22" fill="none" stroke="#ffe600" strokeWidth="2"/>
-                      <rect x="8" y="50" width="14" height="14" fill="#ffe600"/>
-                      {/* data modules */}
-                      <rect x="30" y="4" width="4" height="4" fill="#ffe600"/>
-                      <rect x="36" y="4" width="4" height="4" fill="#ffe600"/>
-                      <rect x="30" y="10" width="4" height="4" fill="#ffe600"/>
-                      <rect x="4" y="30" width="4" height="4" fill="#ffe600"/>
-                      <rect x="4" y="36" width="4" height="4" fill="#ffe600"/>
-                      <rect x="10" y="30" width="4" height="4" fill="#ffe600"/>
-                      <rect x="30" y="30" width="4" height="4" fill="#ffe600"/>
-                      <rect x="36" y="30" width="4" height="4" fill="#ffe600"/>
-                      <rect x="42" y="30" width="4" height="4" fill="#ffe600"/>
-                      <rect x="48" y="30" width="4" height="4" fill="#ffe600"/>
-                      <rect x="54" y="30" width="4" height="4" fill="#ffe600"/>
-                      <rect x="60" y="30" width="4" height="4" fill="#ffe600"/>
-                      <rect x="30" y="36" width="4" height="4" fill="#ffe600"/>
-                      <rect x="42" y="36" width="4" height="4" fill="#ffe600"/>
-                      <rect x="54" y="36" width="4" height="4" fill="#ffe600"/>
-                      <rect x="30" y="42" width="4" height="4" fill="#ffe600"/>
-                      <rect x="36" y="42" width="4" height="4" fill="#ffe600"/>
-                      <rect x="48" y="42" width="4" height="4" fill="#ffe600"/>
-                      <rect x="60" y="42" width="4" height="4" fill="#ffe600"/>
-                      <rect x="30" y="48" width="4" height="4" fill="#ffe600"/>
-                      <rect x="42" y="48" width="4" height="4" fill="#ffe600"/>
-                      <rect x="54" y="48" width="4" height="4" fill="#ffe600"/>
-                      <rect x="36" y="54" width="4" height="4" fill="#ffe600"/>
-                      <rect x="48" y="54" width="4" height="4" fill="#ffe600"/>
-                      <rect x="60" y="54" width="4" height="4" fill="#ffe600"/>
-                      <rect x="30" y="60" width="4" height="4" fill="#ffe600"/>
-                      <rect x="42" y="60" width="4" height="4" fill="#ffe600"/>
-                      <rect x="60" y="60" width="4" height="4" fill="#ffe600"/>
+                      <rect width="72" height="72" fill="#0d0d0d" />
+                      <rect x="4" y="4" width="22" height="22" rx="0" fill="none" stroke="#ffe600" strokeWidth="2" />
+                      <rect x="8" y="8" width="14" height="14" fill="#ffe600" />
+                      <rect x="46" y="4" width="22" height="22" fill="none" stroke="#ffe600" strokeWidth="2" />
+                      <rect x="50" y="8" width="14" height="14" fill="#ffe600" />
+                      <rect x="4" y="46" width="22" height="22" fill="none" stroke="#ffe600" strokeWidth="2" />
+                      <rect x="8" y="50" width="14" height="14" fill="#ffe600" />
+                      <rect x="30" y="4" width="4" height="4" fill="#ffe600" />
+                      <rect x="36" y="4" width="4" height="4" fill="#ffe600" />
+                      <rect x="30" y="10" width="4" height="4" fill="#ffe600" />
+                      <rect x="4" y="30" width="4" height="4" fill="#ffe600" />
+                      <rect x="4" y="36" width="4" height="4" fill="#ffe600" />
+                      <rect x="10" y="30" width="4" height="4" fill="#ffe600" />
+                      <rect x="30" y="30" width="4" height="4" fill="#ffe600" />
+                      <rect x="36" y="30" width="4" height="4" fill="#ffe600" />
+                      <rect x="42" y="30" width="4" height="4" fill="#ffe600" />
+                      <rect x="48" y="30" width="4" height="4" fill="#ffe600" />
+                      <rect x="54" y="30" width="4" height="4" fill="#ffe600" />
+                      <rect x="60" y="30" width="4" height="4" fill="#ffe600" />
+                      <rect x="30" y="36" width="4" height="4" fill="#ffe600" />
+                      <rect x="42" y="36" width="4" height="4" fill="#ffe600" />
+                      <rect x="54" y="36" width="4" height="4" fill="#ffe600" />
+                      <rect x="30" y="42" width="4" height="4" fill="#ffe600" />
+                      <rect x="36" y="42" width="4" height="4" fill="#ffe600" />
+                      <rect x="48" y="42" width="4" height="4" fill="#ffe600" />
+                      <rect x="60" y="42" width="4" height="4" fill="#ffe600" />
+                      <rect x="30" y="48" width="4" height="4" fill="#ffe600" />
+                      <rect x="42" y="48" width="4" height="4" fill="#ffe600" />
+                      <rect x="54" y="48" width="4" height="4" fill="#ffe600" />
+                      <rect x="36" y="54" width="4" height="4" fill="#ffe600" />
+                      <rect x="48" y="54" width="4" height="4" fill="#ffe600" />
+                      <rect x="60" y="54" width="4" height="4" fill="#ffe600" />
+                      <rect x="30" y="60" width="4" height="4" fill="#ffe600" />
+                      <rect x="42" y="60" width="4" height="4" fill="#ffe600" />
+                      <rect x="60" y="60" width="4" height="4" fill="#ffe600" />
                     </svg>
                   </a>
-                  <span>SEPOLIA<br/>ETHERSCAN</span>
+                  <span>SEPOLIA<br />ETHERSCAN</span>
                 </div>
               </div>
             </div>
@@ -729,7 +762,7 @@ function LiveDemo() {
             {(phase === 'blocked' || phase === 'done') && (
               <>
                 <button className="btn btn--ghost" onClick={reset}>Reset</button>
-                {phase === 'idle' || phase === 'done' ? (
+                {phase === 'done' ? (
                   <button className="btn btn--danger" onClick={() => { reset(); setTimeout(runAttack, 50) }}>Simulate Attack</button>
                 ) : (
                   <button className="btn btn--outline" onClick={() => { reset(); setTimeout(runClean, 50) }}>Run Clean Path</button>
@@ -781,7 +814,7 @@ const STACK = [
     name: '0G NETWORK',
     type: 'Optional Storage',
     problem: 'Full intent payloads are too large for practical on-chain storage. A decentralized alternative is needed without compromising protocol correctness.',
-    solved: '0G provides verifiable decentralized storage for raw intent JSON. Upload is non-blocking; all security guarantees hold whether or not 0G is available.',
+    solved: '0G provides verifiable decentralized storage for raw intent JSON. Upload is non-blocking — all security guarantees hold whether or not 0G is available.',
   },
   {
     name: 'ETHEREUM SEPOLIA',
@@ -829,7 +862,7 @@ function BuiltWith() {
 /* ================================================================
    FOOTER
 ================================================================= */
-function Footer() {
+function Footer({ navigate }) {
   return (
     <footer className="footer">
       <div className="wrap">
@@ -837,11 +870,12 @@ function Footer() {
           <div className="footer__brand">Proof of Intent Protocol</div>
           <div className="footer__links">
             <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+            <button className="footer__nav-link" onClick={() => navigate('devguide')}>Dev Guide</button>
             <a href="https://sepolia.etherscan.io/address/0x98d9ccA9b5F8abACB4c8BEC833C4ed206DC77954" target="_blank" rel="noopener noreferrer">ExecutionGate ↗</a>
-            <a href="https://sepolia.etherscan.io/address/0xBaAb83d5C2Ef13ac523CEc8989F514F0c4d31A47" target="_blank" rel="noopener noreferrer">IntentRegistry ↗</a>
+            <a href="https://sepolia.etherscan.io/address/0xf2a52EAf8E2440F9aFa28aDA5426Bc2908DDc5b4" target="_blank" rel="noopener noreferrer">IntentRegistry ↗</a>
           </div>
           <div className="footer__stack">
-            EIP-712 · Foundry · ethers v6 · Uniswap V3 · Ethereum Sepolia
+            EIP-712 · Foundry · ethers v6 · Uniswap V3 · Ethereum Sepolia · 0G Network
           </div>
         </div>
         <div className="footer__credit">
@@ -856,19 +890,46 @@ function Footer() {
 }
 
 /* ================================================================
-   APP
+   APP — hash-based routing, no extra deps
 ================================================================= */
 export default function App() {
+  const [page, setPage] = useState(getPage)
+
+  useEffect(() => {
+    const h = () => {
+      setPage(getPage())
+      window.scrollTo(0, 0)
+    }
+    window.addEventListener('popstate', h)
+    return () => window.removeEventListener('popstate', h)
+  }, [])
+
+  const navigate = (to) => {
+    if (to === 'devguide') {
+      history.pushState(null, '', '/devguide')
+    } else {
+      history.pushState(null, '', '/')
+    }
+    setPage(to)
+    window.scrollTo(0, 0)
+  }
+
   return (
     <>
-      <Nav />
-      <Hero />
-      <StatsBar />
-      <HowItWorks />
-      <GetStarted />
-      <LiveDemo />
-      <BuiltWith />
-      <Footer />
+      <Nav navigate={navigate} page={page} />
+      {page === 'devguide' ? (
+        <DevGuide navigate={navigate} />
+      ) : (
+        <>
+          <Hero navigate={navigate} />
+          <StatsBar />
+          <HowItWorks />
+          <GetStarted navigate={navigate} />
+          <LiveDemo />
+          <BuiltWith />
+        </>
+      )}
+      <Footer navigate={navigate} />
     </>
   )
 }
