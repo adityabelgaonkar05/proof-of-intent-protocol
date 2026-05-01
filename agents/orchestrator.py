@@ -20,6 +20,8 @@ def _b32(hex_str: str) -> bytes:
 
 
 def run(root_intent_id: str, user_goal: str, orchestrator_private_key: str) -> dict:
+    config.require_pipeline_keys("DEPLOYER_PRIVATE_KEY")
+
     # Step 1: Connect to contracts
     client = ContractClient(orchestrator_private_key)
 

@@ -19,6 +19,7 @@ import time
 from web3 import Web3
 
 from config.config import (
+    require_pipeline_keys,
     DEPLOYER_PRIVATE_KEY,
     USER_PRIVATE_KEY,
     RESEARCH_PRIVATE_KEY,
@@ -84,6 +85,11 @@ def _revert_reason(exc: Exception) -> str:
 # ---------------------------------------------------------------------------
 
 def run_demo() -> None:
+    require_pipeline_keys(
+        "DEPLOYER_PRIVATE_KEY",
+        "RESEARCH_PRIVATE_KEY",
+        "EXECUTION_PRIVATE_KEY",
+    )
 
     # ── Banner ──────────────────────────────────────────────────────────────
     print_header("PROOF OF INTENT PROTOCOL — LIVE DEMO")

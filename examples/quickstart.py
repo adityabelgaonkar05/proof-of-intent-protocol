@@ -29,6 +29,7 @@ load_dotenv()
 
 from utils import ContractClient, usdc, weth, in_minutes
 from config.config import (
+    require_pipeline_keys,
     DEPLOYER_PRIVATE_KEY,
     USER_PRIVATE_KEY,
     USER_ADDRESS,
@@ -41,6 +42,8 @@ from config.config import (
 
 
 def main() -> None:
+    require_pipeline_keys("DEPLOYER_PRIVATE_KEY")
+
     print("=" * 55)
     print("  Proof-of-Intent Protocol — Python Quickstart")
     print("=" * 55)

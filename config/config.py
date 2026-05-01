@@ -16,6 +16,28 @@ def _require(name: str) -> str:
     return value
 
 
+_PIPELINE_REQUIRED_MSG = (
+    "DEPLOYER_PRIVATE_KEY is required to run the reference pipeline. "
+    "Add it to .env. For SDK-only usage, see .env.sdk.example."
+)
+
+
+def require_pipeline_keys(*names: str) -> None:
+    """Raise SystemExit at startup if any of the given env vars are not set.
+
+    Call this at the top of every pipeline entry point (demo, orchestrator,
+    quickstart) so users see a clear message instead of a mid-run Web3 error
+    caused by an empty address string.
+    """
+    missing = [n for n in names if not os.getenv(n)]
+    if missing:
+        joined = ", ".join(missing)
+        raise SystemExit(
+            f"Missing required environment variable(s): {joined}\n"
+            f"{_PIPELINE_REQUIRED_MSG}"
+        )
+
+
 USE_CLAUDE: bool = os.getenv("USE_CLAUDE", "true").strip().lower() != "false"
 
 CLAUDE_API_KEY: str = os.getenv("CLAUDE_API_KEY", "")
