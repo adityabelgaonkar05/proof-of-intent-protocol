@@ -13,7 +13,7 @@
  * confirms that a scope-exceeding delegation is correctly rejected.
  */
 
-import { ethers } from 'ethers';
+import { ethers, NonceManager } from 'ethers';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -36,7 +36,7 @@ function loadArtifact(contractName: string): { abi: unknown[]; bytecode: string 
 }
 
 async function deploy(
-  wallet: ethers.Wallet,
+  wallet: ethers.Signer,
   artifact: { abi: unknown[]; bytecode: string },
   ...args: unknown[]
 ): Promise<ethers.Contract> {
@@ -52,7 +52,7 @@ function protocolId(name: string): string {
 
 async function signIntent(
   intent: Record<string, unknown>,
-  wallet: ethers.Wallet,
+  wallet: ethers.Signer,
   registryAddress: string,
 ): Promise<string> {
   const domain = {
@@ -99,16 +99,18 @@ async function run(): Promise<void> {
     throw new Error('Anvil node not reachable at http://localhost:8545');
   }
 
-  const deployerWallet      = new ethers.Wallet(DEPLOYER_KEY, provider);
-  const orchestratorWallet  = new ethers.Wallet(ORCHESTRATOR_KEY, provider);
-  const researchWallet      = new ethers.Wallet(RESEARCH_KEY, provider);
-  const executionWallet     = new ethers.Wallet(EXECUTION_KEY, provider);
+  // Wrap each wallet in NonceManager so rapid sequential txs get correct nonces
+  // without racing against eth_getTransactionCount returning stale values.
+  const deployerWallet      = new NonceManager(new ethers.Wallet(DEPLOYER_KEY, provider));
+  const orchestratorWallet  = new NonceManager(new ethers.Wallet(ORCHESTRATOR_KEY, provider));
+  const researchWallet      = new NonceManager(new ethers.Wallet(RESEARCH_KEY, provider));
+  const executionWallet     = new NonceManager(new ethers.Wallet(EXECUTION_KEY, provider));
 
   // In the Python test, deployer == accounts[0] == user (Anvil key #0)
-  const userAddr         = deployerWallet.address;
-  const orchestratorAddr = orchestratorWallet.address;
-  const researchAddr     = researchWallet.address;
-  const executionAddr    = executionWallet.address;
+  const userAddr         = await deployerWallet.getAddress();
+  const orchestratorAddr = await orchestratorWallet.getAddress();
+  const researchAddr     = await researchWallet.getAddress();
+  const executionAddr    = await executionWallet.getAddress();
 
   console.log(`User:         ${userAddr}`);
   console.log(`Orchestrator: ${orchestratorAddr}`);
