@@ -1,5 +1,5 @@
 import { Wallet, getAddress, id } from 'ethers';
-import type { IntentData } from './types';
+import type { IntentData, ScopeData } from './types';
 
 const INTENT_TYPES = {
   Intent: [
@@ -57,5 +57,25 @@ export function buildIntent(params: {
     allowedProtocols: params.allowedProtocols.map(id),
     deadline: params.deadline,
     nonce: params.nonce,
+  };
+}
+
+/**
+ * Build a ScopeData object for use with delegateFromRoot / delegateFromDelegation.
+ * Protocol names (e.g. "Uniswap-V3") are hashed to bytes32 automatically,
+ * consistent with buildIntent().
+ */
+export function buildScope(params: {
+  maxAmountIn: bigint;
+  minAmountOut: bigint;
+  /** Protocol names, e.g. ["Uniswap-V3"] — hashed automatically */
+  allowedProtocols: string[];
+  deadline: bigint;
+}): ScopeData {
+  return {
+    maxAmountIn: params.maxAmountIn,
+    minAmountOut: params.minAmountOut,
+    allowedProtocols: params.allowedProtocols.map(id),
+    deadline: params.deadline,
   };
 }

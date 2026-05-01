@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import type { TransactionReceipt } from 'ethers';
 import type { IntentData, ScopeData, TxParamsData, DelegationData, Config } from './types';
+import { signIntent, buildIntent } from './signIntent';
 
 import AGENT_REGISTRY_ABI from './abis/AgentRegistry.json';
 import INTENT_REGISTRY_ABI from './abis/IntentRegistry.json';
@@ -316,6 +317,62 @@ export class ContractClient {
       delegationId,
       encodeTxParams(txParams),
     ) as Promise<boolean>;
+  }
+
+  /**
+   * Build, sign, and register an intent in one call. Returns intentId.
+   *
+   * @param tokenIn          ERC20 address to swap from.
+   * @param maxAmountIn      Max spend in raw units — use toUsdc(500) or toWeth(0.15).
+   * @param minAmountOut     Minimum acceptable output in raw units.
+   * @param allowedProtocols Protocol names e.g. ["Uniswap-V3"]. Hashed automatically.
+   * @param deadline         Unix timestamp as bigint. Use inMinutes(60) for 1 hour.
+   * @param orchestrator     Address authorised to create the first delegation. Defaults to this wallet.
+   * @param owner            Intent owner address. Defaults to this wallet.
+   */
+  async createIntent(params: {
+    tokenIn: string;
+    maxAmountIn: bigint;
+    minAmountOut: bigint;
+    /** Protocol names e.g. ["Uniswap-V3"] — hashed to bytes32 automatically */
+    allowedProtocols: string[];
+    deadline: bigint;
+    orchestrator?: string;
+    owner?: string;
+  }): Promise<string> {
+    const owner = params.owner ?? this.wallet.address;
+    const orchestrator = params.orchestrator ?? this.wallet.address;
+    const nonce = await (this.intentRegistry.nonces(ethers.getAddress(owner)) as Promise<bigint>);
+    const intent = buildIntent({
+      owner,
+      authorizedOrchestrator: orchestrator,
+      tokenIn: params.tokenIn,
+      maxAmountIn: params.maxAmountIn,
+      minAmountOut: params.minAmountOut,
+      allowedProtocols: params.allowedProtocols,
+      deadline: params.deadline,
+      nonce,
+    });
+    const signature = await signIntent(intent, this.wallet.privateKey, this.config);
+    return this.registerIntent(intent, signature);
+  }
+
+  /**
+   * Register an address in AgentRegistry so it can receive delegations.
+   *
+   * @param agentAddress  Ethereum address to register.
+   * @param name          Human-readable label stored on-chain.
+   * @param skipIfActive  When true (default), returns null if already registered.
+   */
+  async registerAgent(agentAddress: string, name: string, skipIfActive = true): Promise<string | null> {
+    const addr = ethers.getAddress(agentAddress);
+    if (skipIfActive) {
+      const isActive = (await this.agentRegistry.isActiveAgent(addr)) as boolean;
+      if (isActive) return null;
+    }
+    return this.sendTx(
+      this.agentRegistry.registerAgent(addr, name) as Promise<ethers.ContractTransactionResponse>,
+    );
   }
 }
 

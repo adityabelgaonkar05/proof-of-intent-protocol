@@ -14,7 +14,14 @@ export {
   protocolId,
 } from './protocolIds';
 
-export { signIntent, buildIntent } from './signIntent';
+export { signIntent, buildIntent, buildScope } from './signIntent';
+
+export {
+  toUsdc, fromUsdc,
+  toWeth, fromWeth,
+  toToken, fromToken,
+  inMinutes,
+} from './helpers';
 
 export {
   ContractClient,

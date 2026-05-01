@@ -23,21 +23,23 @@ OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
 RPC_URL = os.getenv("RPC_URL", "https://ethereum-sepolia-rpc.publicnode.com")
 DEPLOYER_PRIVATE_KEY = _require("DEPLOYER_PRIVATE_KEY")
-USER_PRIVATE_KEY = _require("USER_PRIVATE_KEY")
+# USER_PRIVATE_KEY defaults to DEPLOYER_PRIVATE_KEY so a single-key setup works out of the box.
+USER_PRIVATE_KEY: str = os.getenv("USER_PRIVATE_KEY") or DEPLOYER_PRIVATE_KEY
 CHAIN_ID = int(os.getenv("CHAIN_ID", "11155111"))
 
 # ---------------------------------------------------------------------------
 # Agent Ethereum wallet addresses
 # ---------------------------------------------------------------------------
 
-RESEARCH_PRIVATE_KEY: str   = _require("RESEARCH_PRIVATE_KEY")
-EXECUTION_PRIVATE_KEY: str  = _require("EXECUTION_PRIVATE_KEY")
+# Multi-agent keys are optional. Leave unset when running single-key quickstart.
+RESEARCH_PRIVATE_KEY: str  = os.getenv("RESEARCH_PRIVATE_KEY", "")
+EXECUTION_PRIVATE_KEY: str = os.getenv("EXECUTION_PRIVATE_KEY", "")
 
 from eth_account import Account as _Account  # noqa: E402
 
 ORCHESTRATOR_ADDRESS: str    = _Account.from_key(DEPLOYER_PRIVATE_KEY).address
-RESEARCH_AGENT_ADDRESS: str  = _Account.from_key(RESEARCH_PRIVATE_KEY).address
-EXECUTION_AGENT_ADDRESS: str = _Account.from_key(EXECUTION_PRIVATE_KEY).address
+RESEARCH_AGENT_ADDRESS: str  = _Account.from_key(RESEARCH_PRIVATE_KEY).address if RESEARCH_PRIVATE_KEY else ""
+EXECUTION_AGENT_ADDRESS: str = _Account.from_key(EXECUTION_PRIVATE_KEY).address if EXECUTION_PRIVATE_KEY else ""
 USER_ADDRESS: str            = _Account.from_key(USER_PRIVATE_KEY).address
 
 # Token addresses on Ethereum Sepolia

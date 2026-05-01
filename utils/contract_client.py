@@ -83,6 +83,7 @@ class TransactionRevertError(Exception):
 
 class ContractClient:
     def __init__(self, private_key: str):
+        self._private_key = private_key
         self.w3 = Web3(Web3.HTTPProvider(RPC_URL))
         if not self.w3.is_connected():
             raise ConnectionError(f"Cannot connect to RPC: {RPC_URL}")
@@ -327,6 +328,93 @@ class ContractClient:
             _b32(delegation_id),
             self._encode_tx_params(tx_params),
         ).call()
+
+    # ------------------------------------------------------------------
+    # High-level convenience methods
+    # ------------------------------------------------------------------
+
+    def create_intent(
+        self,
+        token_in: str,
+        max_amount_in: int,
+        min_amount_out: int,
+        allowed_protocols: list[str],
+        deadline: int,
+        orchestrator: str | None = None,
+        owner: str | None = None,
+    ) -> str:
+        """Build, sign, and register an intent in one call. Returns intentId.
+
+        :param token_in:          ERC20 address to swap from (e.g. USDC_ADDRESS).
+        :param max_amount_in:     Max spend in raw units — use usdc(500) or weth(0.15).
+        :param min_amount_out:    Minimum acceptable output in raw units.
+        :param allowed_protocols: Protocol names e.g. ["Uniswap-V3"]. Hashed automatically.
+        :param deadline:          Unix timestamp. Use in_minutes(60) for 1 hour from now.
+        :param orchestrator:      Address authorised to create the first delegation.
+                                  Defaults to this wallet.
+        :param owner:             Intent owner. Defaults to this wallet.
+        """
+        from utils.sign_intent import build_intent as _build, sign_intent as _sign  # noqa: PLC0415
+        _owner = owner or self.account.address
+        _orch  = orchestrator or self.account.address
+        nonce  = self.intent_registry.functions.nonces(
+            Web3.to_checksum_address(_owner)
+        ).call()
+        intent = _build(
+            owner=_owner,
+            authorized_orchestrator=_orch,
+            token_in=token_in,
+            max_amount_in=max_amount_in,
+            min_amount_out=min_amount_out,
+            allowed_protocols=allowed_protocols,
+            deadline=deadline,
+            nonce=nonce,
+        )
+        signature = _sign(intent, self._private_key)
+        return self.register_intent(intent, signature)
+
+    @staticmethod
+    def build_scope(
+        max_amount_in: int,
+        min_amount_out: int,
+        allowed_protocols: list[str],
+        deadline: int,
+    ) -> dict:
+        """Build a scope dict with protocol names hashed to bytes32 automatically.
+
+        Pass the result directly to delegate_from_root() or delegate_from_delegation().
+
+        :param max_amount_in:     Max spend in raw units — use usdc(500) etc.
+        :param min_amount_out:    Minimum output in raw units.
+        :param allowed_protocols: Protocol names e.g. ["Uniswap-V3"]. Hashed automatically.
+        :param deadline:          Unix timestamp.
+        """
+        return {
+            "maxAmountIn":      max_amount_in,
+            "minAmountOut":     min_amount_out,
+            "allowedProtocols": [Web3.keccak(text=p).hex() for p in allowed_protocols],
+            "deadline":         deadline,
+        }
+
+    def register_agent(
+        self,
+        agent_address: str,
+        name: str,
+        skip_if_active: bool = True,
+    ) -> str | None:
+        """Register an address in AgentRegistry so it can receive delegations.
+
+        :param agent_address: Ethereum address to register.
+        :param name:          Human-readable label stored on-chain.
+        :param skip_if_active: When True (default), returns None without a tx if
+                               the address is already registered and active.
+        """
+        addr = Web3.to_checksum_address(agent_address)
+        if skip_if_active and self.agent_registry.functions.isActiveAgent(addr).call():
+            return None
+        return self.send_tx(
+            self.agent_registry.functions.registerAgent(addr, name)
+        )
 
     # ------------------------------------------------------------------
     # Struct encoders
