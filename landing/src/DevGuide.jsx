@@ -14,8 +14,10 @@ const PY_ENV = `# .env — copy from poip_py/.env.example
 # Required
 PRIVATE_KEY=0x...
 
-# Optional — for compile_intent()
-CLAUDE_API_KEY=sk-ant-...
+# Optional — for compile_intent() (set one or both; Claude takes priority)
+CLAUDE_API_KEY=sk-ant-...   # default model: claude-haiku-4-5-20251001
+OPENAI_API_KEY=sk-proj-...  # default model: gpt-5-mini
+# MODEL=                    # override whichever model is selected
 
 # Optional — 0G decentralised storage (leave blank to skip)
 ZG_API_KEY=0x...
@@ -100,27 +102,69 @@ except TransactionRevertError as exc:
 # Error hierarchy:
 # POIPError → TransactionRevertError → ScopeViolationError / DeadlineExpiredError`
 
-const PY_COMPILER = `from agents.compiler import compile_intent, display_intent
+const PY_COMPILER = `# pip install "proof-of-intent[ai]"   ← required for compile_intent()
+from proof_of_intent import compile_intent
 
-# Convert plain English to a structured intent dict
-compiled = compile_intent("swap 4 USDC for max ETH via Uniswap, deadline 30 min")
-display_intent(compiled)
+# Uses CLAUDE_API_KEY if set (claude-haiku-4-5-20251001), else OPENAI_API_KEY (gpt-5-mini)
+# Set MODEL=<id> to override the default model for whichever provider is selected.
+compiled = compile_intent("swap 4 USDC for WETH via Uniswap, deadline 30 min")
 
 # Returns:
 # {
-#   "tokenIn":         "USDC",
-#   "tokenInAddress":  "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-#   "maxAmountIn":     4000000,
-#   "minAmountOut":    <int>,
-#   "allowedProtocols": ["Uniswap-V3"],
-#   "deadlineMinutes": 30,
-#   "reasoning":       "<one sentence from LLM>"
+#   "token_in":          "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+#   "max_amount_in":     4000000,
+#   "min_amount_out":    <int>,
+#   "allowed_protocols": ["Uniswap-V3"],
+#   "deadline":          <unix timestamp>
 # }
 
-# Interactive REPL:
-# python -m agents.compiler`
+# Pass directly into build_intent():
+from proof_of_intent import ContractClient, build_intent, sign_intent, in_hours
+client = ContractClient(private_key=os.environ["PRIVATE_KEY"])
+intent = build_intent(
+    owner=client.account.address,
+    authorized_orchestrator=client.account.address,
+    token_in=compiled["token_in"],
+    max_amount_in=compiled["max_amount_in"],
+    min_amount_out=compiled["min_amount_out"],
+    allowed_protocols=compiled["allowed_protocols"],
+    deadline=compiled["deadline"],
+    nonce=0,
+)`
 
 /* ── TypeScript strings ───────────────────────────────────────── */
+const TS_COMPILER = `import { compileIntent } from 'proof-of-intent'
+
+// Uses CLAUDE_API_KEY if set (claude-haiku-4-5-20251001), else OPENAI_API_KEY (gpt-5-mini)
+// Set MODEL=<id> to override the default model for whichever provider is selected.
+const compiled = await compileIntent(
+  'swap 4 USDC for WETH via Uniswap, deadline 30 min'
+)
+
+// compiled: CompiledIntent
+// {
+//   tokenIn:          string   // ERC20 address
+//   maxAmountIn:      bigint   // raw units
+//   minAmountOut:     bigint   // raw units
+//   allowedProtocols: string[] // e.g. ["Uniswap-V3"]
+//   deadline:         number   // Unix timestamp
+// }
+
+// Pass directly into buildIntent():
+import { buildIntent, signIntent, loadConfig, getNonce } from 'proof-of-intent'
+const config = loadConfig()
+const nonce  = await getNonce(config, wallet.address)
+const intent = buildIntent({
+  owner:                  wallet.address,
+  authorizedOrchestrator: wallet.address,
+  tokenIn:                compiled.tokenIn,
+  maxAmountIn:            compiled.maxAmountIn,
+  minAmountOut:           compiled.minAmountOut,
+  allowedProtocols:       compiled.allowedProtocols,
+  deadline:               BigInt(compiled.deadline),
+  nonce,
+})`
+
 const TS_INSTALL = `npm i proof-of-intent
 
 # ethers ^6.0.0 is a required peer dependency
@@ -131,8 +175,10 @@ const TS_ENV = `# .env — copy from poip_ts/.env.example
 # Required
 PRIVATE_KEY=0x...
 
-# Optional — for compileIntent()
-CLAUDE_API_KEY=sk-ant-...
+# Optional — for compileIntent() (set one or both; Claude takes priority)
+CLAUDE_API_KEY=sk-ant-...   # default model: claude-haiku-4-5-20251001
+OPENAI_API_KEY=sk-proj-...  # default model: gpt-5-mini
+# MODEL=                    # override whichever model is selected
 
 # Optional — 0G decentralised storage (leave blank to skip)
 ZG_API_KEY=0x...
@@ -400,7 +446,9 @@ function PythonContent() {
         <div className="dg-env-table">
           {[
             { v: 'PRIVATE_KEY',    req: 'required', note: 'Ethereum wallet private key (0x…)' },
-            { v: 'CLAUDE_API_KEY', req: 'optional', note: 'Only for compile_intent() — ignored if blank' },
+            { v: 'CLAUDE_API_KEY', req: 'optional', note: 'compile_intent() — Claude preferred (haiku-4-5 default)' },
+            { v: 'OPENAI_API_KEY', req: 'optional', note: 'compile_intent() — fallback when CLAUDE_API_KEY not set (gpt-5-mini default)' },
+            { v: 'MODEL',          req: 'optional', note: 'Override the default model ID for whichever LLM is selected' },
             { v: 'ZG_API_KEY',     req: 'optional', note: '0G storage key — protocol works without it' },
             { v: 'RPC_URL',        req: 'optional', note: 'Default: ethereum-sepolia-rpc.publicnode.com' },
             { v: 'CHAIN_ID',       req: 'optional', note: 'Default: 11155111 (Sepolia)' },
@@ -438,9 +486,12 @@ function PythonContent() {
         <div className="dg-info-box">
           <div className="dg-info-box__label">Optional feature</div>
           <p>
-            <code>compile_intent()</code> wraps Claude (or OpenAI) to convert a plain English
-            sentence into the structured dict that <code>build_intent()</code> expects.
-            Requires <code>CLAUDE_API_KEY</code> and <code>proof-of-intent[ai]</code>.
+            <code>compile_intent()</code> converts a plain English sentence into the structured
+            dict that <code>build_intent()</code> expects. Set <code>CLAUDE_API_KEY</code> to use
+            Claude (default: <code>claude-haiku-4-5-20251001</code>), or <code>OPENAI_API_KEY</code> to
+            use OpenAI (default: <code>gpt-5-mini</code>). Claude takes priority if both are set.
+            Override either default with the <code>MODEL</code> env var.
+            Requires <code>proof-of-intent[ai]</code>.
           </p>
         </div>
         <pre className="code-panel"><code>{PY_COMPILER}</code></pre>
@@ -461,7 +512,9 @@ function TypeScriptContent() {
         <div className="dg-env-table">
           {[
             { v: 'PRIVATE_KEY',    req: 'required', note: 'Ethereum wallet private key (0x…)' },
-            { v: 'CLAUDE_API_KEY', req: 'optional', note: 'For compileIntent() — ignored if blank' },
+            { v: 'CLAUDE_API_KEY', req: 'optional', note: 'compileIntent() — Claude preferred (haiku-4-5 default)' },
+            { v: 'OPENAI_API_KEY', req: 'optional', note: 'compileIntent() — fallback when CLAUDE_API_KEY not set (gpt-5-mini default)' },
+            { v: 'MODEL',          req: 'optional', note: 'Override the default model ID for whichever LLM is selected' },
             { v: 'ZG_API_KEY',     req: 'optional', note: '0G storage key — protocol works without it' },
             { v: 'ZG_RPC_URL',     req: 'optional', note: 'Default: evmrpc-testnet.0g.ai' },
             { v: 'ZG_INDEXER_URL', req: 'optional', note: 'Default: indexer-storage-testnet-turbo.0g.ai' },
@@ -499,6 +552,21 @@ function TypeScriptContent() {
           </p>
         </div>
         <pre className="code-panel"><code>{TS_PROTOCOL}</code></pre>
+      </DgSection>
+
+      <DgSection num="07" label="Natural Language Compiler" title="Plain English → Intent">
+        <div className="dg-info-box">
+          <div className="dg-info-box__label">Optional feature</div>
+          <p>
+            <code>compileIntent()</code> converts a plain English sentence into a typed{' '}
+            <code>CompiledIntent</code> object ready to pass into <code>buildIntent()</code>.
+            Set <code>CLAUDE_API_KEY</code> to use Claude (default: <code>claude-haiku-4-5-20251001</code>),
+            or <code>OPENAI_API_KEY</code> to use OpenAI (default: <code>gpt-5-mini</code>).
+            Claude takes priority if both are set. Override either default with the <code>MODEL</code> env var.
+            No extra npm packages required — uses native fetch.
+          </p>
+        </div>
+        <pre className="code-panel"><code>{TS_COMPILER}</code></pre>
       </DgSection>
     </div>
   )

@@ -79,7 +79,7 @@ Before any token moves, `ExecutionGate.verifyChain()` walks the delegation chain
  └─────────────────────────────┘
 ```
 
-Agent messages flow over AXL (Yggdrasil-routed, ed25519-authenticated):
+In the demo, agent messages flow over AXL (Yggdrasil-routed, ed25519-authenticated) — AXL is used as the inter-agent transport in the demo pipeline and is not part of the SDK itself:
 
 ```
   Orchestrator ──TASK──▶ Research Agent ──EXECUTE──▶ Execution Agent
@@ -347,9 +347,9 @@ All variables are read from `.env` (copy from `.env.example`).
 | `USDC_ADDRESS`             | no         | USDC token on Sepolia (default: `0x1c7D4B196...`)        | `0x1c7D4B...` |
 | `WETH_ADDRESS`             | no         | WETH token on Sepolia (default: `0xfFf99767...`)         | `0xfFf997...` |
 | `UNISWAP_ROUTER_ADDRESS`   | no         | SwapRouter02 on Sepolia (default: `0x3bFA4769...`)       | `0x3bFA47...` |
-| `USE_CLAUDE`               | no         | `true` to use Claude as the LLM, `false` for OpenAI (default: `false`) | `false` |
-| `CLAUDE_API_KEY`           | if USE_CLAUDE=true  | Anthropic API key                              | `sk-ant-...` |
-| `OPENAI_API_KEY`           | if USE_CLAUDE=false | OpenAI API key                                 | `sk-...` |
+| `CLAUDE_API_KEY`           | no         | Anthropic key for `compile_intent()` / `compileIntent()` — Claude preferred when set (default model: `claude-haiku-4-5-20251001`) | `sk-ant-...` |
+| `OPENAI_API_KEY`           | no         | OpenAI key for `compile_intent()` / `compileIntent()` — used when `CLAUDE_API_KEY` is not set (default model: `gpt-5-mini`) | `sk-proj-...` |
+| `MODEL`                    | no         | Override the default model ID for whichever LLM provider is selected | `gpt-5-mini` |
 | `ZG_API_KEY`               | no         | 0G network private key (hex); intent storage is skipped if unset | `0x789...` |
 | `ZG_RPC_URL`               | no         | 0G EVM RPC (default: `https://evmrpc-testnet.0g.ai`)     | — |
 | `ZG_INDEXER_URL`           | no         | 0G storage indexer (default: `https://indexer-storage-testnet-turbo.0g.ai`) | — |
@@ -505,15 +505,19 @@ integrated in this version.
 
 ### AXL
 
-The three agents (Orchestrator, Research, Execution) communicate exclusively through AXL, a
-lightweight peer-to-peer network built on Yggdrasil routing with ed25519 node identities. Each
-agent runs a local AXL node (`vendor/axl/`) and sends JSON messages to peer nodes by public
-key — no broker, no central server. The Orchestrator sends a `TASK` message to the Research
-Agent after creating the root delegation. The Research Agent forwards an `EXECUTE` message to
-the Execution Agent after creating the sub-delegation. The Execution Agent reports `COMPLETE`
-(with tx hash) or `FAILED` (with revert reason) back to the Orchestrator. Python talks to each
-node only on localhost via a thin HTTP API (`/send`, `/recv`, `/topology`). The routing between
-nodes happens inside the AXL network transparently.
+AXL is Gensyn's open-source peer-to-peer networking layer, used in the demo pipeline as the
+transport between agents. It is **not part of the SDK** — `npm install proof-of-intent` and
+`pip install proof-of-intent` have no AXL dependency. The SDK is transport-agnostic; agents
+can communicate over any channel.
+
+In the demo, each agent runs a local AXL node (`vendor/axl/`, a pre-compiled Go binary built
+on Yggdrasil routing with ed25519 node identities) and sends JSON messages to peer nodes by
+public key — no broker, no central server. The Orchestrator sends a `TASK` message to the
+Research Agent after creating the root delegation. The Research Agent forwards an `EXECUTE`
+message to the Execution Agent after creating the sub-delegation. The Execution Agent reports
+`COMPLETE` (with tx hash) or `FAILED` (with revert reason) back to the Orchestrator. Agents
+talk to their local AXL node only on localhost via a thin HTTP API (`/send`, `/recv`,
+`/topology`). Routing between nodes happens inside the AXL mesh transparently.
 
 ---
 

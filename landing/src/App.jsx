@@ -783,8 +783,8 @@ const INTEGRATIONS = [
   {
     name: 'AXL',
     category: 'Agent Transport',
-    what: 'Encrypted P2P mesh that carries messages between the orchestrator, research agent, and execution agent across process boundaries — no shared memory, no central broker. Each agent is a sovereign process; AXL is the only wire between them.',
-    detail: 'Yggdrasil spanning-tree routing · ed25519 identity keys · local HTTP API',
+    what: 'Encrypted P2P mesh used in the demo pipeline to carry messages between the orchestrator, research agent, and execution agent across process boundaries — no shared memory, no central broker. Each agent is a sovereign process. AXL is the transport layer for the demo; it is not part of the SDK itself.',
+    detail: 'Demo only · Yggdrasil spanning-tree routing · ed25519 identity keys · local HTTP API',
   },
   {
     name: 'UNISWAP V3',
