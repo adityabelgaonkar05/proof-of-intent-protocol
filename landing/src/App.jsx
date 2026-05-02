@@ -657,7 +657,7 @@ function LiveDemo() {
           {phase === 'blocked' && (
             <div className="demo-result demo-result--blocked">
               <div className="demo-result__hd">
-                <span className="demo-result__icon">⬛</span>
+                <span className="demo-result__icon">✗</span>
                 <span className="demo-result__title">TRANSACTION REVERTED</span>
               </div>
               <div className="demo-result__revert">revert: "Amount exceeds root"</div>
