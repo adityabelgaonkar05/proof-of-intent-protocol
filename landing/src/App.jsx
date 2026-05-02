@@ -131,6 +131,10 @@ function Hero({ navigate }) {
 
         <div className="hero__chips">
           <div className="chip">
+            <span className="chip__fn">compileIntent</span>
+            <span className="chip__args">("swap 40 USDC for WETH via Uniswap")</span>
+          </div>
+          <div className="chip">
             <span className="chip__fn">buildIntent</span>
             <span className="chip__args">(token, maxAmount, protocols[], deadline)</span>
           </div>
@@ -226,9 +230,12 @@ function HowItWorks() {
               maximum amount in, minimum amount out, a whitelist of allowed
               protocols, a deadline, and the authorized orchestrator address.
               The signature binds every parameter. No execution is possible
-              without a valid signature from the intent owner.
+              without a valid signature from the intent owner. Plain English
+              goals can be parsed into intent parameters automatically via{' '}
+              <code>compileIntent()</code> using Claude or OpenAI.
             </p>
             <div className="hiw-card__code">
+              <code>compileIntent("swap 40 USDC for WETH") → params</code>
               <code>buildIntent(USDC, 40e6, [UNISWAP_V3], +2h)</code>
               <code>signIntent(intent, userKey, config)</code>
               <code>registerIntent(intent, sig) → intentId</code>
@@ -397,6 +404,7 @@ const txHash = await client.executeSwap(subId, {
 `
 
 const API_METHODS = [
+  { name: 'compileIntent', sig: '(text: string) → Promise<CompiledIntent>', desc: 'Translate a plain English goal into structured intent parameters using Claude (haiku-4-5) or OpenAI (gpt-5-mini). Set CLAUDE_API_KEY or OPENAI_API_KEY. Falls back to hardcoded defaults if neither key is present.' },
   { name: 'buildIntent', sig: '(params: IntentParams) → IntentData', desc: 'Construct an intent struct with auto-hashed protocol names and validated defaults.' },
   { name: 'signIntent', sig: '(intent, privateKey, config) → Promise<string>', desc: 'EIP-712 sign an intent against the IntentRegistry domain. Returns a hex signature.' },
   { name: 'registerIntent', sig: '(intent, signature) → Promise<string>', desc: 'Submit signed intent to IntentRegistry on-chain. Returns intentId (bytes32).' },
