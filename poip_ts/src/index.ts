@@ -25,6 +25,9 @@ export {
   usdc, weth,
 } from './helpers';
 
+export type { CompiledIntent } from './compiler';
+export { compileIntent } from './compiler';
+
 export type { ContractClientOptions } from './contractClient';
 export {
   ContractClient,

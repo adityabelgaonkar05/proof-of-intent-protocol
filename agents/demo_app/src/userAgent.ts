@@ -18,6 +18,7 @@ import {
   loadConfig,
   usdc,
   inHours,
+  compileIntent,
 } from 'proof-of-intent';
 import type { IntentData } from 'proof-of-intent';
 import { sendMessage, waitForType, sleep } from './axlClient';
@@ -42,47 +43,19 @@ function requireEnv(name: string): string {
   return v;
 }
 
-interface CompiledParams {
-  maxUsdc: number;
-  deadlineHours: number;
-  protocols: string[];
-}
 
-async function compileWithClaude(goal: string, apiKey: string): Promise<CompiledParams> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
-      messages: [
-        {
-          role: 'user',
-          content: `Extract DeFi intent parameters from this goal: "${goal}"
-
-Respond with ONLY valid JSON (no markdown):
-{"maxUsdc": <number>, "deadlineHours": <number>, "protocols": [<string>...]}
-
-Protocol names must be exactly from: "Uniswap-V3", "Aave-V3"
-Example: {"maxUsdc": 40, "deadlineHours": 2, "protocols": ["Uniswap-V3", "Aave-V3"]}`,
-        },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`Claude API ${res.status}`);
-  const data = (await res.json()) as { content: Array<{ type: string; text: string }> };
-  return JSON.parse(data.content[0]?.text ?? '{}') as CompiledParams;
-}
+const HARDCODED_PARAMS = {
+  maxAmountIn: usdc(40),
+  minAmountOut: 1n,
+  allowedProtocols: ['Uniswap-V3', 'Aave-V3'],
+  deadline: inHours(2),
+};
 
 async function buildAndRegisterIntent(
   client: ContractClient,
   userAddress: string,
   orchestratorAddress: string,
-  params: CompiledParams,
+  params: { maxAmountIn: bigint; minAmountOut: bigint; allowedProtocols: string[]; deadline: number | bigint },
 ): Promise<{ intentId: string; intent: IntentData }> {
   const config = loadConfig();
   const nonce = (await client.intentRegistry.nonces(userAddress)) as bigint;
@@ -91,10 +64,10 @@ async function buildAndRegisterIntent(
     owner: userAddress,
     authorizedOrchestrator: orchestratorAddress,
     tokenIn: USDC_ADDRESS,
-    maxAmountIn: usdc(params.maxUsdc),
-    minAmountOut: 1n, // research agent refines this from live market data
-    allowedProtocols: params.protocols,
-    deadline: inHours(params.deadlineHours),
+    maxAmountIn: params.maxAmountIn,
+    minAmountOut: params.minAmountOut,
+    allowedProtocols: params.allowedProtocols,
+    deadline: BigInt(params.deadline),
     nonce,
   });
 
@@ -117,22 +90,29 @@ async function main() {
   const client = new ContractClient({ privateKey: userKey });
 
   // ── Intent compilation ──────────────────────────────────────────────────────
-  let params: CompiledParams;
-  const claudeKey = process.env['CLAUDE_API_KEY'];
+  const hasLLMKey = Boolean(process.env['CLAUDE_API_KEY'] ?? process.env['OPENAI_API_KEY']);
+  let params: typeof HARDCODED_PARAMS;
 
-  if (claudeKey) {
-    log(`Compiling intent with Claude AI...`);
+  if (hasLLMKey) {
+    const provider = process.env['CLAUDE_API_KEY'] ? 'Claude' : 'OpenAI';
+    log(`Compiling intent with ${provider} AI...`);
     try {
-      params = await compileWithClaude(GOAL, claudeKey);
-      log(`Claude extracted: ${params.maxUsdc} USDC | ${params.protocols.join(', ')} | ${params.deadlineHours}h`);
+      const compiled = await compileIntent(GOAL);
+      params = {
+        maxAmountIn: compiled.maxAmountIn,
+        minAmountOut: compiled.minAmountOut,
+        allowedProtocols: compiled.allowedProtocols,
+        deadline: compiled.deadline,
+      };
+      log(`${provider} compiled: ${compiled.allowedProtocols.join(', ')} | deadline ${new Date(compiled.deadline * 1000).toISOString()}`);
     } catch {
-      log(`Claude unavailable — using defaults`);
-      params = { maxUsdc: 40, deadlineHours: 2, protocols: ['Uniswap-V3', 'Aave-V3'] };
+      log(`LLM unavailable — using hardcoded defaults`);
+      params = HARDCODED_PARAMS;
     }
   } else {
-    params = { maxUsdc: 40, deadlineHours: 2, protocols: ['Uniswap-V3', 'Aave-V3'] };
+    params = HARDCODED_PARAMS;
     log(`Goal: "${GOAL}"`);
-    log(`Parsed: max ${params.maxUsdc} USDC | ${params.protocols.join(', ')} | ${params.deadlineHours}h deadline`);
+    log(`No LLM key set — using hardcoded intent (max 40 USDC | Uniswap-V3, Aave-V3 | 2h)`);
   }
 
   // ── SCENARIO 1: Register intent and kick off pipeline ──────────────────────
@@ -147,8 +127,8 @@ async function main() {
   log(`Intent registered on Sepolia.`);
   log(`  intentId: ${intentId}`);
   log(`  owner:    ${userAddress}`);
-  log(`  max:      ${params.maxUsdc} USDC  |  protocols: ${params.protocols.join(', ')}`);
-  log(`  deadline: ${params.deadlineHours}h from now`);
+  log(`  max:      ${params.maxAmountIn} raw  |  protocols: ${params.allowedProtocols.join(', ')}`);
+  log(`  deadline: ${new Date(Number(params.deadline) * 1000).toISOString()}`);
   log(`  https://sepolia.etherscan.io/address/${orchestratorEthAddress}`);
 
   // Relay intent metadata to orchestrator (avoids a chain read on their side)

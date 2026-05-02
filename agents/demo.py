@@ -35,7 +35,7 @@ from config.config import (
     WETH_ADDRESS,
     UNISWAP_ROUTER_ADDRESS,
 )
-from proof_of_intent import ContractClient, build_intent, sign_intent
+from proof_of_intent import ContractClient, build_intent, sign_intent, compile_intent
 from proof_of_intent.errors import TransactionRevertError
 
 # ---------------------------------------------------------------------------
@@ -44,7 +44,13 @@ from proof_of_intent.errors import TransactionRevertError
 
 _UNISWAP_V3_ID: str = Web3.keccak(text="Uniswap-V3").hex()
 
-# Root intent parameters (Scenario 1 and 2 share the same intent shape)
+_GOAL = (
+    "Swap 500 USDC for WETH using Uniswap-V3, "
+    "minimum 0.15 WETH out, valid for 1 hour. "
+    "Token in: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+)
+
+# Hardcoded fallback — used when no LLM key is set or compile_intent fails
 _MAX_USDC = 500_000_000           # 500 USDC  (6 decimals)
 _MIN_WETH = 150_000_000_000_000_000  # 0.15 WETH (18 decimals)
 _DEADLINE_SECS = 3600             # 1 hour from now
@@ -110,19 +116,45 @@ def run_demo() -> None:
     res_client   = ContractClient(RESEARCH_PRIVATE_KEY)
     exec_client  = ContractClient(EXECUTION_PRIVATE_KEY)
 
+    # ── Intent compilation ──────────────────────────────────────────────────
+    has_llm_key = bool(_os.getenv("CLAUDE_API_KEY") or _os.getenv("OPENAI_API_KEY"))
+    if has_llm_key:
+        provider = "Claude" if _os.getenv("CLAUDE_API_KEY") else "OpenAI"
+        print(f"  Compiling intent with {provider} AI...")
+        try:
+            _compiled = compile_intent(_GOAL)
+            _intent_max_usdc = int(_compiled["max_amount_in"])
+            _intent_min_weth = int(_compiled["min_amount_out"])
+            _intent_protocols = _compiled["allowed_protocols"]
+            _intent_deadline_offset = max(0, int(_compiled["deadline"]) - int(time.time()))
+            print(f"  {provider} compiled: max {_intent_max_usdc / 1e6:.0f} USDC | "
+                  f"protocols: {', '.join(_intent_protocols)}")
+        except Exception as exc:
+            print(f"  LLM unavailable ({exc}) — using hardcoded defaults")
+            _intent_max_usdc = _MAX_USDC
+            _intent_min_weth = _MIN_WETH
+            _intent_protocols = ["Uniswap-V3"]
+            _intent_deadline_offset = _DEADLINE_SECS
+    else:
+        print(f"  No LLM key set — using hardcoded intent")
+        _intent_max_usdc = _MAX_USDC
+        _intent_min_weth = _MIN_WETH
+        _intent_protocols = ["Uniswap-V3"]
+        _intent_deadline_offset = _DEADLINE_SECS
+
     # ── Step 1: Build and sign intent ───────────────────────────────────────
     print_header("STEP 1: USER COMPILES AND SIGNS INTENT")
 
     nonce_1 = user_client.intent_registry.functions.nonces(USER_ADDRESS).call()
-    deadline_1 = int(time.time()) + _DEADLINE_SECS
+    deadline_1 = int(time.time()) + _intent_deadline_offset
 
     intent_1 = build_intent(
         owner=USER_ADDRESS,
         authorized_orchestrator=ORCHESTRATOR_ADDRESS,
         token_in=USDC_ADDRESS,
-        max_amount_in=_MAX_USDC,
-        min_amount_out=_MIN_WETH,
-        allowed_protocols=["Uniswap-V3"],
+        max_amount_in=_intent_max_usdc,
+        min_amount_out=_intent_min_weth,
+        allowed_protocols=_intent_protocols,
         deadline=deadline_1,
         nonce=nonce_1,
     )
@@ -131,10 +163,10 @@ def run_demo() -> None:
     print(f"  owner:                  {intent_1['owner']}")
     print(f"  authorizedOrchestrator: {intent_1['authorizedOrchestrator']}")
     print(f"  tokenIn (USDC):         {intent_1['tokenIn']}")
-    print(f"  maxAmountIn:            {_MAX_USDC / 1e6:.0f} USDC")
-    print(f"  minAmountOut:           {_MIN_WETH / 1e18:.2f} WETH")
-    print(f"  allowedProtocols:       Uniswap-V3")
-    print(f"  deadline:               +1 hour")
+    print(f"  maxAmountIn:            {_intent_max_usdc / 1e6:.0f} USDC")
+    print(f"  minAmountOut:           {_intent_min_weth / 1e18:.2f} WETH")
+    print(f"  allowedProtocols:       {', '.join(_intent_protocols)}")
+    print(f"  deadline:               +{_intent_deadline_offset // 3600}h {(_intent_deadline_offset % 3600) // 60}m")
     print(f"  signature:              {sig_1[:20]}...")
     time.sleep(1)
 
