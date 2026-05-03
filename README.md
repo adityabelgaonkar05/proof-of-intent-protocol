@@ -258,6 +258,40 @@ A full end-to-end example with env-var loading is in [poip_ts/examples/tradingBo
 
 ---
 
+## Natural Language Compiler
+
+Both SDKs include a compiler that converts a plain English description into the structured parameters needed for `buildIntent` / `build_intent`.
+
+**Python** (requires `pip install "proof-of-intent[ai]"`):
+
+```python
+from proof_of_intent import compile_intent, ContractClient
+import os
+
+# Uses CLAUDE_API_KEY (default) or OPENAI_API_KEY. Set MODEL to override.
+compiled  = compile_intent("swap 500 USDC for WETH via Uniswap, deadline 1 hour")
+client    = ContractClient(private_key=os.environ["PRIVATE_KEY"])
+intent_id = client.create_intent(**compiled)
+```
+
+**TypeScript** (no extra packages — uses native `fetch`):
+
+```typescript
+import { compileIntent, ContractClient, loadConfig } from 'proof-of-intent';
+
+// Uses CLAUDE_API_KEY (default) or OPENAI_API_KEY. Set MODEL to override.
+const compiled = await compileIntent('swap 500 USDC for WETH via Uniswap, deadline 1 hour');
+// compiled: { tokenIn, maxAmountIn, minAmountOut, allowedProtocols, deadline }
+
+const client = new ContractClient({ privateKey: process.env.PRIVATE_KEY!, ...loadConfig() });
+// pass compiled fields into buildIntent() or use them directly
+```
+
+Set `CLAUDE_API_KEY` for Claude (preferred, defaults to `claude-haiku-4-5-20251001`) or
+`OPENAI_API_KEY` for OpenAI (defaults to `gpt-5-mini`). Use `MODEL` to override either default.
+
+---
+
 ## Agent Pipeline Setup
 
 The full pipeline runs three Python agents that communicate over AXL — a local Yggdrasil network. Each agent gets its own AXL node.

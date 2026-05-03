@@ -16,8 +16,10 @@ pip install proof-of-intent
 # Required: your wallet private key (Sepolia testnet only)
 PRIVATE_KEY=0x...
 
-# Optional: only needed if you call compile_intent()
-CLAUDE_API_KEY=sk-ant-...
+# Optional — for compile_intent() (set one or both; Claude takes priority)
+CLAUDE_API_KEY=sk-ant-...   # default model: claude-haiku-4-5-20251001
+OPENAI_API_KEY=sk-proj-...  # default model: gpt-5-mini
+# MODEL=                    # override whichever model is selected
 ```
 
 ## Five-line quickstart
@@ -87,11 +89,36 @@ pip install "proof-of-intent[ai]"
 ```
 
 ```python
-from proof_of_intent import compile_intent, ContractClient
+import os
+from proof_of_intent import compile_intent, build_intent, sign_intent, ContractClient, in_hours
 
-params  = compile_intent("swap 200 USDC for ETH using Uniswap within 2 hours")
-client  = ContractClient(private_key=os.environ["PRIVATE_KEY"])
-intent_id = client.create_intent(**params)
+# Uses CLAUDE_API_KEY if set (claude-haiku-4-5-20251001), else OPENAI_API_KEY (gpt-5-mini).
+# Set MODEL=<id> to override the default model for whichever provider is selected.
+compiled = compile_intent("swap 500 USDC for WETH via Uniswap, deadline 1 hour")
+# Returns:
+# {
+#   "token_in":          "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+#   "max_amount_in":     500000000,
+#   "min_amount_out":    <int>,
+#   "allowed_protocols": ["Uniswap-V3"],
+#   "deadline":          <unix timestamp>
+# }
+
+# One-liner: pass directly into create_intent()
+client    = ContractClient(private_key=os.environ["PRIVATE_KEY"])
+intent_id = client.create_intent(**compiled)
+
+# Or unpack into build_intent() for full control:
+intent = build_intent(
+    owner=client.account.address,
+    authorized_orchestrator=client.account.address,
+    token_in=compiled["token_in"],
+    max_amount_in=compiled["max_amount_in"],
+    min_amount_out=compiled["min_amount_out"],
+    allowed_protocols=compiled["allowed_protocols"],
+    deadline=compiled["deadline"],
+    nonce=0,  # fetch from contract: client.intent_registry.functions.nonces(addr).call()
+)
 ```
 
 

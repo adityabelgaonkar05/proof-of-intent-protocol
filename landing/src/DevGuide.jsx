@@ -328,6 +328,7 @@ const TS_METHODS = [
 
 const TS_EXPORTS = [
   { name: 'ContractClient', type: 'class',    desc: 'Main SDK class — async methods, options-object constructor' },
+  { name: 'compileIntent(text, options?)', type: 'function', desc: 'Translate plain English into CompiledIntent — needs CLAUDE_API_KEY or OPENAI_API_KEY; no extra npm packages (uses native fetch)' },
   { name: 'buildIntent', type: 'function',    desc: 'Build IntentData — auto-hashes protocol names' },
   { name: 'buildScope',  type: 'function',    desc: 'Build ScopeData — auto-hashes protocol names' },
   { name: 'signIntent',  type: 'function',    desc: 'EIP-712 sign an intent — returns hex string' },
@@ -349,6 +350,7 @@ const TS_EXPORTS = [
 
 const PY_EXPORTS = [
   { name: 'ContractClient',       type: 'class',    desc: 'Main SDK class' },
+  { name: 'compile_intent(text, *, api_key?, use_claude?)', type: 'function', desc: 'Translate plain English into intent params dict — needs CLAUDE_API_KEY or OPENAI_API_KEY; install proof-of-intent[ai]' },
   { name: 'build_intent',         type: 'function', desc: 'Build intent dict — auto-hashes protocol names' },
   { name: 'sign_intent',          type: 'function', desc: 'EIP-712 sign — returns hex string' },
   { name: 'usdc(amount)',         type: 'helper',   desc: 'amount → int in USDC base units (6 decimals)' },

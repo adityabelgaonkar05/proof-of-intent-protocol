@@ -34,6 +34,7 @@
 | `sign_intent(intent, key)` | Yes | EIP-712 signature |
 | `UNISWAP_V3`, `CURVE`, `BALANCER_V2` | No | pre-hashed bytes32 constants |
 | `Scope` | No | dataclass for building scope dicts |
+| `compile_intent(text, *, api_key?, use_claude?)` | No | translate natural language to intent dict — needs `CLAUDE_API_KEY` or `OPENAI_API_KEY` (install `proof-of-intent[ai]`) |
 
 **`ContractClient` methods:**
 
@@ -73,6 +74,7 @@
 | `loadDeployedAddresses(deployed)` | convert deployed.json to config |
 | `getNonce(config, owner)` | fetch nonce from IntentRegistry |
 | `getDomainSeparator(config)` | EIP-712 domain separator |
+| `compileIntent(text, options?)` | translate natural language to `CompiledIntent` — needs `CLAUDE_API_KEY` or `OPENAI_API_KEY` |
 | `verifyChain(id, params, config)` | module-level view call |
 | `executeSwap(id, params, key, config)` | module-level execute |
 
@@ -89,7 +91,12 @@ It bundles its own ABIs and hardcodes Sepolia defaults — no dependency on
 Primary operations:
 
 ```python
-from proof_of_intent import ContractClient, build_intent, sign_intent
+from proof_of_intent import ContractClient, build_intent, sign_intent, compile_intent
+
+# compile_intent — translate natural language; needs CLAUDE_API_KEY or OPENAI_API_KEY
+# install: pip install "proof-of-intent[ai]"
+compile_intent(natural_language: str, *, api_key=None, use_claude=True) -> dict
+# returns: { token_in, max_amount_in, min_amount_out, allowed_protocols, deadline }
 
 # build_intent — all keyword-only
 build_intent(owner, authorized_orchestrator, token_in, max_amount_in,
@@ -288,6 +295,98 @@ Error hierarchy: `POIPError → TransactionRevertError → ScopeViolationError /
 ## 2. Natural Language Compiler
 
 ### What it adds
+
+Both SDKs ship a natural language compiler that converts a plain English sentence
+into structured intent parameters.
+
+- **Python SDK** (`from proof_of_intent import compile_intent`) — part of `poip_py`,
+  requires `pip install "proof-of-intent[ai]"`
+- **TypeScript SDK** (`import { compileIntent } from 'proof-of-intent'`) — part of
+  `poip_ts`, uses native `fetch`, no extra packages required
+- **Agent pipeline** (`agents/compiler.py`) — standalone compiler used by the demo
+  pipeline with a slightly different schema (see below)
+
+### SDK compile_intent (Python)
+
+```python
+# pip install "proof-of-intent[ai]"
+from proof_of_intent import compile_intent, ContractClient
+
+# Uses CLAUDE_API_KEY if set (claude-haiku-4-5-20251001), else OPENAI_API_KEY (gpt-5-mini)
+# Set MODEL=<id> to override the default model for whichever provider is selected.
+compiled = compile_intent("swap 500 USDC for WETH via Uniswap, deadline 1 hour")
+# Returns:
+# {
+#   "token_in":          "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+#   "max_amount_in":     500000000,
+#   "min_amount_out":    <int>,
+#   "allowed_protocols": ["Uniswap-V3"],
+#   "deadline":          <unix timestamp>
+# }
+
+client    = ContractClient(private_key=os.environ["PRIVATE_KEY"])
+intent_id = client.create_intent(**compiled)
+```
+
+### SDK compileIntent (TypeScript)
+
+```typescript
+import { compileIntent, buildIntent, signIntent, loadConfig, getNonce } from 'proof-of-intent'
+
+// Uses CLAUDE_API_KEY if set (claude-haiku-4-5-20251001), else OPENAI_API_KEY (gpt-5-mini)
+// Set MODEL=<id> to override the default model for whichever provider is selected.
+const compiled = await compileIntent('swap 500 USDC for WETH via Uniswap, deadline 1 hour')
+// compiled: CompiledIntent {
+//   tokenIn:          string   // ERC20 address
+//   maxAmountIn:      bigint
+//   minAmountOut:     bigint
+//   allowedProtocols: string[]
+//   deadline:         number   // Unix timestamp
+// }
+
+const config = loadConfig()
+const nonce  = await getNonce(config, wallet.address)
+const intent = buildIntent({
+  owner:                  wallet.address,
+  authorizedOrchestrator: wallet.address,
+  tokenIn:                compiled.tokenIn,
+  maxAmountIn:            compiled.maxAmountIn,
+  minAmountOut:           compiled.minAmountOut,
+  allowedProtocols:       compiled.allowedProtocols,
+  deadline:               BigInt(compiled.deadline),
+  nonce,
+})
+```
+
+### Additional env vars
+
+| Variable | When required |
+|---|---|
+| `CLAUDE_API_KEY` | Preferred — Claude haiku-4-5 default |
+| `OPENAI_API_KEY` | Fallback when `CLAUDE_API_KEY` is not set |
+| `MODEL` | Override default model ID for whichever provider is selected |
+
+`CLAUDE_API_KEY` takes priority if both keys are set.
+
+### Model used
+
+- Claude path: `claude-haiku-4-5-20251001` (default)
+- OpenAI path: `gpt-5-mini` (default)
+- Override: set `MODEL=<model-id>` in the environment
+
+---
+
+### agents/compiler.py (demo pipeline only)
+
+`agents/compiler.py` is a standalone compiler used by the Python agent demo pipeline.
+It has a **different schema** from the SDK's `compile_intent` — it includes
+`tokenInAddress`, `deadlineMinutes`, and `reasoning` fields that must be post-processed
+before passing to `build_intent()`.
+
+**Use the SDK's `compile_intent`** (from `proof_of_intent`) unless you are working
+directly with the agent pipeline scripts.
+
+### agents/compiler.py — What it adds
 
 `agents/compiler.py` converts a plain English sentence into the structured dict
 that `build_intent()` expects. It adds no new packages beyond what the SDK core
@@ -622,6 +721,8 @@ import {
   ALL_PROTOCOLS, PROTOCOL_NAMES, protocolName, protocolId,
   // Intent building and signing (both hash protocol names automatically)
   buildIntent, buildScope, signIntent,
+  // Natural language compiler (needs CLAUDE_API_KEY or OPENAI_API_KEY)
+  compileIntent,
   // ContractClient class
   ContractClient,
   // Module-level helpers
@@ -730,6 +831,20 @@ class ContractClient {
   async ensureTokenApproval(tokenAddress: string, spender: string, amount: bigint): Promise<void>
   async tokenBalance(tokenAddress: string, account: string): Promise<bigint>
 }
+
+// Translate natural language to structured intent parameters
+// Requires CLAUDE_API_KEY (preferred) or OPENAI_API_KEY. Set MODEL to override default.
+interface CompiledIntent {
+  tokenIn: string;          // ERC20 address
+  maxAmountIn: bigint;
+  minAmountOut: bigint;
+  allowedProtocols: string[];
+  deadline: number;         // Unix timestamp
+}
+async function compileIntent(
+  naturalLanguage: string,
+  options?: { apiKey?: string; useClaude?: boolean }
+): Promise<CompiledIntent>
 
 // Module-level helpers
 async function getNonce(config: Config, owner: string): Promise<bigint>

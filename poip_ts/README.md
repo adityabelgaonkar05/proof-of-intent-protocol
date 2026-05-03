@@ -71,6 +71,38 @@ const client = new ContractClient({
 });
 ```
 
+## Natural-language intent compilation (optional)
+
+No extra npm packages required — `compileIntent` uses native `fetch`.
+
+```typescript
+import { compileIntent, buildIntent, signIntent, loadConfig, getNonce } from 'proof-of-intent';
+
+// Uses CLAUDE_API_KEY if set (claude-haiku-4-5-20251001), else OPENAI_API_KEY (gpt-5-mini).
+// Set MODEL=<id> to override the default model for whichever provider is selected.
+const compiled = await compileIntent('swap 500 USDC for WETH via Uniswap, deadline 1 hour');
+// compiled: CompiledIntent {
+//   tokenIn:          string   // ERC20 address
+//   maxAmountIn:      bigint
+//   minAmountOut:     bigint
+//   allowedProtocols: string[]
+//   deadline:         number   // Unix timestamp
+// }
+
+const config = loadConfig();
+const nonce  = await getNonce(config, wallet.address);
+const intent = buildIntent({
+  owner:                  wallet.address,
+  authorizedOrchestrator: wallet.address,
+  tokenIn:                compiled.tokenIn,
+  maxAmountIn:            compiled.maxAmountIn,
+  minAmountOut:           compiled.minAmountOut,
+  allowedProtocols:       compiled.allowedProtocols,
+  deadline:               BigInt(compiled.deadline),
+  nonce,
+});
+```
+
 ## Building from source
 
 ```bash
